@@ -37,9 +37,9 @@
     "titleBefore": "A szakmai döntés maradjon.",
     "titleEmphasis": "A felesleges munka tűnjön el.",
     "steps": [
-      { "number": "01", "title": "Töltse fel a tervet", "body": "Töltsön fel nagy felbontású PDF, TIFF, JPG vagy PNG fájlt az eredeti tervlap megőrzésével." },
+      { "number": "01", "title": "Töltse fel a tervet", "body": "Töltsön fel nagy felbontású PDF, TIFF, JPG vagy PNG fájlt." },
       { "number": "02", "title": "Illessze EOV-ba", "body": "Helyezzen el illesztőpontokat egy referencia-réteg vagy az alapértelmezett OpenStreetMap nézet segítségével." },
-      { "number": "03", "title": "Ellenőrizze a jelmagyarázatot", "body": "Ellenőrizze a felismert osztályokat, színeket és geometriai típusokat a vektorizálás előtt." },
+      { "number": "03", "title": "Ellenőrizze a jelmagyarázatot", "body": "Ellenőrizze a felismert jelöléseket, színeket és geometriai típusokat a vektorizálás előtt." },
       { "number": "04", "title": "Exportáljon tiszta rétegeket", "body": "Ellenőrizze az eredményt, javítsa, ami szükséges, és töltse le a GIS-kompatibilis Shapefile-rétegeket." }
     ]
   },

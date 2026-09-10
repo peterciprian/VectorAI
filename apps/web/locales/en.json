@@ -37,9 +37,9 @@
     "titleBefore": "Keep the judgement.",
     "titleEmphasis": "Lose the busywork.",
     "steps": [
-      { "number": "01", "title": "Bring in the plan", "body": "Upload a high-resolution PDF, TIFF, JPG, or PNG and keep the original sheet intact." },
+      { "number": "01", "title": "Bring in the plan", "body": "Upload a high-resolution PDF, TIFF, JPG, or PNG." },
       { "number": "02", "title": "Anchor it in EOV", "body": "Place ground control points against a reference layer or the default OpenStreetMap view." },
-      { "number": "03", "title": "Teach the legend", "body": "Review detected classes, colors, and geometry types before the model starts tracing." },
+      { "number": "03", "title": "Teach the legend", "body": "Review detected markings, colors, and geometry types before the model starts tracing." },
       { "number": "04", "title": "Export clean layers", "body": "Inspect the result, correct what matters, and download strict GIS-ready Shapefile layers." }
     ]
   },
