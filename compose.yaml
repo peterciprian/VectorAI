@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vectoryai}
+      POSTGRES_USER: ${POSTGRES_USER:-vectoryai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vectoryai_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  api:
+    build:
+      context: ./apps/api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vectoryai}:${POSTGRES_PASSWORD:-vectoryai_dev}@postgres:5432/${POSTGRES_DB:-vectoryai}
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_ROOT: /storage/projects
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/storage
+    depends_on:
+      - postgres
+      - redis
+
+  worker:
+    build:
+      context: ./apps/worker
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_ROOT: /storage/projects
+    volumes:
+      - ./storage:/storage
+    depends_on:
+      - redis
+
+  web:
+    build:
+      context: ./apps/web
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
