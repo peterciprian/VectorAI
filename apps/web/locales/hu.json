@@ -1,0 +1,53 @@
+{
+  "language": {
+    "label": "Nyelv",
+    "english": "Angol",
+    "hungarian": "Magyar"
+  },
+  "navigation": {
+    "main": "Fő navigáció",
+    "workflow": "Munkafolyamat",
+    "why": "Miért a VectoryAI?",
+    "start": "Projekt indítása"
+  },
+  "hero": {
+    "eyebrow": "Mesterséges intelligenciával támogatott városterv-digitalizálás",
+    "titleBefore": "A beolvasott tervtől a",
+    "titleEmphasis": "térbeli intelligenciáig.",
+    "description": "A VectoryAI segít a várostervezőknek a régi övezeti és településszerkezeti terveket pontos, szerkeszthető GIS-rétegekké alakítani, kézi nyomkövetés nélkül.",
+    "create": "Projekt indítása",
+    "learn": "Így működik",
+    "mapLabel": "Városterv absztrakt előnézete",
+    "plan": "TERV / 047",
+    "projection": "EPSG:23700",
+    "caption": "georeferált terv előnézete"
+  },
+  "outcomes": {
+    "ariaLabel": "Projekt eredményei",
+    "kicker": "A térkép mögötti munkára tervezve",
+    "metrics": [
+      { "value": "70-80%", "label": "kevesebb kézi nyomkövetés" },
+      { "value": "90%+", "label": "célzott geometriai IoU" },
+      { "value": "0", "label": "szabálytalan átfedés vagy rés" }
+    ],
+    "note": "Fókuszált munkakörnyezet önkormányzatok, tervezőirodák és a következő tervfelülvizsgálaton dolgozó GIS-csapatok számára."
+  },
+  "workflow": {
+    "kicker": "Átgondolt út a rasztertől a vektorig",
+    "titleBefore": "A szakmai döntés maradjon.",
+    "titleEmphasis": "A felesleges munka tűnjön el.",
+    "steps": [
+      { "number": "01", "title": "Töltse fel a tervet", "body": "Töltsön fel nagy felbontású PDF, TIFF, JPG vagy PNG fájlt az eredeti tervlap megőrzésével." },
+      { "number": "02", "title": "Illessze EOV-ba", "body": "Helyezzen el illesztőpontokat egy referencia-réteg vagy az alapértelmezett OpenStreetMap nézet segítségével." },
+      { "number": "03", "title": "Ellenőrizze a jelmagyarázatot", "body": "Ellenőrizze a felismert osztályokat, színeket és geometriai típusokat a vektorizálás előtt." },
+      { "number": "04", "title": "Exportáljon tiszta rétegeket", "body": "Ellenőrizze az eredményt, javítsa, ami szükséges, és töltse le a GIS-kompatibilis Shapefile-rétegeket." }
+    ]
+  },
+  "closing": {
+    "eyebrow": "Az első tervfelülvizsgálat itt kezdődik",
+    "titleBefore": "Tegye a következő tervét",
+    "titleEmphasis": "GIS-készre.",
+    "description": "Digitalizálja az övezeteket, szabályozási vonalakat és pontszerű elemeket egyetlen, nyomon követhető munkafolyamatban. Natív EOV-támogatással.",
+    "cta": "Lépjen kapcsolatba velünk"
+  }
+}

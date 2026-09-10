@@ -1,0 +1,53 @@
+{
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "hungarian": "Hungarian"
+  },
+  "navigation": {
+    "main": "Main navigation",
+    "workflow": "Workflow",
+    "why": "Why VectoryAI",
+    "start": "Start a project"
+  },
+  "hero": {
+    "eyebrow": "AI-assisted urban plan vectorization",
+    "titleBefore": "From scanned plan to",
+    "titleEmphasis": "spatial intelligence.",
+    "description": "VectoryAI helps urban planners turn legacy zoning and master plans into accurate, editable GIS layers without tracing every boundary by hand.",
+    "create": "Create a project",
+    "learn": "See how it works",
+    "mapLabel": "Abstract preview of an urban plan map",
+    "plan": "PLAN / 047",
+    "projection": "EPSG:23700",
+    "caption": "georeferenced plan preview"
+  },
+  "outcomes": {
+    "ariaLabel": "Project outcomes",
+    "kicker": "Built for the work behind the map",
+    "metrics": [
+      { "value": "70-80%", "label": "less manual tracing" },
+      { "value": "90%+", "label": "target geometric IoU" },
+      { "value": "0", "label": "illegal overlaps or slivers" }
+    ],
+    "note": "A focused workspace for municipalities, planning offices, and GIS teams managing the next revision."
+  },
+  "workflow": {
+    "kicker": "A considered path from raster to vector",
+    "titleBefore": "Keep the judgement.",
+    "titleEmphasis": "Lose the busywork.",
+    "steps": [
+      { "number": "01", "title": "Bring in the plan", "body": "Upload a high-resolution PDF, TIFF, JPG, or PNG and keep the original sheet intact." },
+      { "number": "02", "title": "Anchor it in EOV", "body": "Place ground control points against a reference layer or the default OpenStreetMap view." },
+      { "number": "03", "title": "Teach the legend", "body": "Review detected classes, colors, and geometry types before the model starts tracing." },
+      { "number": "04", "title": "Export clean layers", "body": "Inspect the result, correct what matters, and download strict GIS-ready Shapefile layers." }
+    ]
+  },
+  "closing": {
+    "eyebrow": "The first revision starts here",
+    "titleBefore": "Make your next plan",
+    "titleEmphasis": "ready for GIS.",
+    "description": "Digitize zoning districts, regulatory lines, and point symbols in one traceable workflow. Native EOV support included.",
+    "cta": "Talk to the team"
+  }
+}
