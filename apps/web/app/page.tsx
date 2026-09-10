@@ -67,7 +67,7 @@ export default function Home() {
 
       <section className="closing shell-width" id="start">
         <div><p className="eyebrow"><span className="eyebrow-dot" /> The first revision starts here</p><h2>Make your next plan<br /><em>ready for GIS.</em></h2></div>
-        <div className="closing-side"><p>Digitize zoning districts, regulatory lines, and point symbols in one traceable workflow. Native EOV support included.</p><a className="button button-light" href="mailto:hello@vectoryai.local">Talk to the team <span aria-hidden="true">&#8599;</span></a></div>
+        <div className="closing-side"><p>Digitize zoning districts, regulatory lines, and point symbols in one traceable workflow. Native EOV support included.</p><a className="button button-light" href="mailto:peterciprian@gmail.com">Talk to the team <span aria-hidden="true">&#8599;</span></a></div>
       </section>
     </main>
   );
