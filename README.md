@@ -43,6 +43,16 @@ Services:
 - PostgreSQL/PostGIS: localhost:5432
 - Redis: localhost:6379
 
+## Deploy the UI to GitHub Pages
+
+The `Deploy UI to GitHub Pages` workflow builds `apps/web` as a static Next.js export and publishes it on every push to `main` that changes the UI. The project site is available at:
+
+```text
+https://peterciprian.github.io/VectorAI/
+```
+
+In the GitHub repository settings, set **Pages > Build and deployment > Source** to **GitHub Actions**. The workflow uses the repository name as the Next.js base path for Pages, while local development continues to run from `/`.
+
 The current API and worker are intentionally minimal foundations. Processing modules, authentication, uploads, and OpenLayers workflows are introduced incrementally according to `backlog.md`.
 
 ## Run services directly
