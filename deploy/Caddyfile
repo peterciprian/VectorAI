@@ -1,0 +1,26 @@
+{$API_DOMAIN} {
+    encode gzip
+
+    handle /health {
+        reverse_proxy api:8000
+    }
+
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    handle /docs* {
+        reverse_proxy api:8000
+    }
+
+    handle /openapi.json {
+        reverse_proxy api:8000
+    }
+
+    log {
+        output stdout
+        format json
+    }
+
+    tls {$ACME_EMAIL}
+}

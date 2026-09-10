@@ -52,7 +52,7 @@ export default function Home() {
           <div className="map-grid" />
           <div className="map-road road-one" /><div className="map-road road-two" /><div className="map-road road-three" />
           <div className="map-zone zone-one" /><div className="map-zone zone-two" /><div className="map-zone zone-three" />
-          <div className="map-label label-one">Lk-1</div><div className="map-label label-two">Vt</div>
+          <div className="map-label label-one">Zkk</div><div className="map-label label-two">Lke-1</div><div className="map-label label-three">Vt-3</div>
           <div className="map-pin pin-one" /><div className="map-pin pin-two" />
           <div className="map-caption"><span className="caption-line" /> {content.hero.caption}</div>
         </div>

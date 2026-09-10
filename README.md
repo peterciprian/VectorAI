@@ -21,6 +21,8 @@ backlog.md
 user_stories.md
 vision.md
 compose.yaml
+compose.production.yaml
+deploy/                 Oracle VM and Caddy deployment files
 ```
 
 ## Prerequisites
@@ -42,6 +44,29 @@ Services:
 - API docs: http://localhost:8000/docs
 - PostgreSQL/PostGIS: localhost:5432
 - Redis: localhost:6379
+
+## Deploy the backend on an Oracle Always Free VM
+
+The UI is deployed separately to GitHub Pages. `compose.production.yaml` runs the backend stack on a Linux VM:
+
+```text
+Caddy -> FastAPI API -> Redis / Celery worker / PostgreSQL + PostGIS
+```
+
+The production Compose file does not run the Next.js web service. It expects an ARM64 Oracle Ampere A1 VM, a DNS record pointing `API_DOMAIN` to the VM, and inbound TCP ports `80`, `443`, and `22` allowed by the Oracle security list. PostgreSQL, Redis, and the API are private to the Compose network.
+
+On the VM:
+
+```bash
+git clone https://github.com/peterciprian/VectorAI.git
+cd VectorAI
+cp deploy/.env.production.example .env.production
+# Edit .env.production with the real API hostname, email, password, and CORS origin.
+docker compose --env-file .env.production -f compose.production.yaml up -d --build
+docker compose --env-file .env.production -f compose.production.yaml ps
+```
+
+For a new Ubuntu ARM64 VM, `deploy/bootstrap-ubuntu-arm64.sh` installs Docker Engine and the Compose plugin. Run it once, log out and back in, then run the Compose commands above. Keep `.env.production` private and back up the named `postgres_data` and `project_storage` volumes before using real project files.
 
 ## Deploy the UI to GitHub Pages
 
