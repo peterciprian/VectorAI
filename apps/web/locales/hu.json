@@ -12,8 +12,8 @@
   },
   "hero": {
     "eyebrow": "Mesterséges intelligenciával támogatott városterv-digitalizálás",
-    "titleBefore": "A beolvasott tervtől a",
-    "titleEmphasis": "térbeli intelligenciáig.",
+    "titleBefore": "Tervlaptól",
+    "titleEmphasis": "a valós téradatig.",
     "description": "A VectoryAI segít a várostervezőknek a régi övezeti és településszerkezeti terveket pontos, szerkeszthető GIS-rétegekké alakítani, kézi nyomkövetés nélkül.",
     "create": "Projekt indítása",
     "learn": "Így működik",

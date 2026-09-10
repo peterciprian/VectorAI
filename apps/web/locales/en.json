@@ -28,7 +28,7 @@
     "metrics": [
       { "value": "70-80%", "label": "less manual tracing" },
       { "value": "90%+", "label": "target geometric IoU" },
-      { "value": "0", "label": "illegal overlaps or slivers" }
+      { "value": "0", "label": "improper overlaps or slivers" }
     ],
     "note": "A focused workspace for municipalities, planning offices, and GIS teams managing the next revision."
   },
