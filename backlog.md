@@ -13,28 +13,35 @@ To ensure rapid delivery of a functional Minimum Viable Product (MVP) tailored f
 
 ## 2. Product Backlog Items (PBI Table)
 
-| ID | Backlog Item Title | Epic | Priority | Est. (SP) | Target Phase | Dependencies |
-| :--- | :--- | :--- | :---: | :---: | :---: | :--- |
-| **PBI-01** | Project Scaffolding & Dockerized Dev Environment (Next.js + FastAPI + Redis + PostGIS) | Infra | **Must** | 5 | Sprint 1 | - |
-| **PBI-02** | High-Res Map Ingestion & PDF to 300 DPI Raster Tiling Engine | Ingestion | **Must** | 8 | Sprint 1 | PBI-01 |
-| **PBI-03** | Interactive GCP Georeferencer & GDAL Warping to EOV (EPSG:23700) | Georef | **Must** | 8 | Sprint 2 | PBI-02 |
-| **PBI-04** | OpenLayers 9+ Base Map Viewer with Proj4 EOV Support & Overlay Controls | Frontend | **Must** | 5 | Sprint 2 | PBI-03 |
-| **PBI-05** | Legend Detection & OCR Parser with Geometry Type Assignment | Legend | **Must** | 8 | Sprint 2 | PBI-02 |
-| **PBI-06** | Interactive Legend Review & Color Swatch Calibration UI | Frontend | **Must** | 5 | Sprint 2 | PBI-05 |
-| **PBI-07** | Zoning District Polygon Color Segmentation & Contour Vectorization Engine | Vectorizer | **Must** | 13 | Sprint 3 | PBI-05 |
-| **PBI-08** | Linear Regulatory Element Skeletonization & Douglas-Peucker Smoothing | Vectorizer | **Must** | 8 | Sprint 3 | PBI-07 |
-| **PBI-09** | Point Symbol Detection & Centroid Coordinate Extractor | Vectorizer | **Must** | 5 | Sprint 3 | PBI-07 |
-| **PBI-10** | Layer Segregation & ESRI Shapefile Package Generator (.shp, .shx, .dbf, .prj) | Exporter | **Must** | 8 | Sprint 4 | PBI-07, PBI-08 |
-| **PBI-11** | OpenLayers Multi-Layer Vector Visualizer with Layer Toggles & Opacity | Frontend | **Must** | 5 | Sprint 4 | PBI-04, PBI-10 |
-| **PBI-12** | Celery Asynchronous Job Queue & Real-time Progress Updates (SSE/WS) | Infra | **Must** | 5 | Sprint 1 | PBI-01 |
-| **PBI-13** | Morphological Text Inpainting & Label Masking for Hole-Free Polygons | Vectorizer | **Should** | 8 | Sprint 3 | PBI-07 |
-| **PBI-14** | Automated Topology Snapping & Sliver Gap Removal Module | Topology | **Should** | 8 | Sprint 4 | PBI-07, PBI-08 |
-| **PBI-15** | In-Browser OpenLayers Vector Editor (Draw, Modify, Delete, Snap) | Frontend | **Should** | 8 | Sprint 4 | PBI-11 |
-| **PBI-16** | Semi-Automatic EOV Grid Crosshair / Tick Detector | Georef | **Should** | 5 | Sprint 2 | PBI-03 |
-| **PBI-17** | Secondary Export Formats (GeoJSON & DXF Package) | Exporter | **Should** | 3 | Sprint 5 | PBI-10 |
-| **PBI-18** | User Project Management Dashboard & Recent Jobs History | Frontend | **Should** | 5 | Sprint 5 | PBI-01 |
-| **PBI-19** | Fine-Tuned SAM 2 / YOLOv8-seg Urban Planning Model Integration | AI / ML | **Could** | 13 | Phase 2 | PBI-07 |
-| **PBI-20** | Multi-Sheet Plan Stitching & Seamless Boundary Merging | Vectorizer | **Could** | 13 | Phase 2 | PBI-14 |
+| ID | Backlog Item Title | Epic | Priority | Est. (SP) | Target Phase | Dependencies | Current Status |
+| :--- | :--- | :--- | :---: | :---: | :---: | :--- | :--- |
+| **PBI-01** | Project Scaffolding & Dockerized Dev Environment (Next.js + FastAPI + Redis + PostGIS) | Infra | **Must** | 5 | Sprint 1 | - | **Ready** |
+| **PBI-02** | High-Res Map Ingestion & PDF to 300 DPI Raster Tiling Engine | Ingestion | **Must** | 8 | Sprint 1 | PBI-01 | **Mostly complete** |
+| **PBI-03** | Interactive GCP Georeferencer & GDAL Warping to EOV (EPSG:23700) | Georef | **Must** | 8 | Sprint 2 | PBI-02 | **Mostly complete** |
+| **PBI-04** | OpenLayers 9+ Base Map Viewer with Proj4 EOV Support & Overlay Controls | Frontend | **Must** | 5 | Sprint 2 | PBI-03 | **Mostly complete** |
+| **PBI-05** | Legend Detection & OCR Parser with Geometry Type Assignment | Legend | **Must** | 8 | Sprint 2 | PBI-02 | **Mostly complete** |
+| **PBI-06** | Interactive Legend Review & Color Swatch Calibration UI | Frontend | **Must** | 5 | Sprint 2 | PBI-05 | **Mostly complete** |
+| **PBI-07** | Zoning District Polygon Color Segmentation & Contour Vectorization Engine | Vectorizer | **Must** | 13 | Sprint 3 | PBI-05 | **Mostly complete** |
+| **PBI-08** | Linear Regulatory Element Skeletonization & Douglas-Peucker Smoothing | Vectorizer | **Must** | 8 | Sprint 3 | PBI-07 | **Mostly complete** |
+| **PBI-09** | Point Symbol Detection & Centroid Coordinate Extractor | Vectorizer | **Must** | 5 | Sprint 3 | PBI-07 | **Mostly complete** |
+| **PBI-10** | Layer Segregation & ESRI Shapefile Package Generator (.shp, .shx, .dbf, .prj) | Exporter | **Must** | 8 | Sprint 4 | PBI-07, PBI-08 | **Mostly complete** |
+| **PBI-11** | OpenLayers Multi-Layer Vector Visualizer with Layer Toggles & Opacity | Frontend | **Must** | 5 | Sprint 4 | PBI-04, PBI-10 | **Mostly complete** |
+| **PBI-12** | Celery Asynchronous Job Queue & Real-time Progress Updates (SSE/WS) | Infra | **Must** | 5 | Sprint 1 | PBI-01 | **Mostly complete** |
+| **PBI-13** | Morphological Text Inpainting & Label Masking for Hole-Free Polygons | Vectorizer | **Should** | 8 | Sprint 3 | PBI-07 | **Implemented slice** |
+| **PBI-14** | Automated Topology Snapping & Sliver Gap Removal Module | Topology | **Should** | 8 | Sprint 4 | PBI-07, PBI-08 | **Mostly complete** |
+| **PBI-15** | In-Browser OpenLayers Vector Editor (Draw, Modify, Delete, Snap) | Frontend | **Should** | 8 | Sprint 4 | PBI-11 | **Mostly complete** |
+| **PBI-16** | Semi-Automatic EOV Grid Crosshair / Tick Detector | Georef | **Should** | 5 | Sprint 2 | PBI-03 | **Not started** |
+| **PBI-17** | Secondary Export Formats (GeoJSON & DXF Package) | Exporter | **Should** | 3 | Sprint 5 | PBI-10 | **Not started** |
+| **PBI-18** | User Project Management Dashboard & Recent Jobs History | Frontend | **Should** | 5 | Sprint 5 | PBI-01 | **Not started** |
+| **PBI-19** | Fine-Tuned SAM 2 / YOLOv8-seg Urban Planning Model Integration | AI / ML | **Could** | 13 | Phase 2 | PBI-07 | **Not started** |
+| **PBI-20** | Multi-Sheet Plan Stitching & Seamless Boundary Merging | Vectorizer | **Could** | 13 | Phase 2 | PBI-14 | **Not started** |
+
+### Status Legend
+
+- **Ready:** Core workflow is implemented and validated with focused tests/builds.
+- **Mostly complete:** Main acceptance-critical slice is implemented; real-plan QA, browser coverage, or hardening gaps remain.
+- **Implemented slice:** The requested PBI behavior is implemented, but the PBI is not a release-complete production feature.
+- **Not started:** No implementation has been completed for the PBI.
 
 ---
 
