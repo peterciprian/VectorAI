@@ -21,8 +21,9 @@ backlog.md
 user_stories.md
 vision.md
 compose.yaml
-compose.production.yaml
-deploy/                 Oracle VM and Caddy deployment files
+compose.production.yaml Legacy VM deployment alternative
+deploy/                 Render deployment runbook and legacy VM files
+render.yaml             Render Blueprint for the free backend services
 ```
 
 ## Prerequisites
@@ -45,28 +46,30 @@ Services:
 - PostgreSQL/PostGIS: localhost:5432
 - Redis: localhost:6379
 
-## Deploy the backend on an Oracle Always Free VM
+## Deploy the backend on Render
 
-The UI is deployed separately to GitHub Pages. `compose.production.yaml` runs the backend stack on a Linux VM:
+The UI is deployed separately to GitHub Pages. The recommended free backend setup uses Render:
 
 ```text
-Caddy -> FastAPI API -> Redis / Celery worker / PostgreSQL + PostGIS
+Render Web Service -> FastAPI API
+Render Postgres -> PostGIS database
+Render Key Value -> Redis-compatible queue
+Local or paid worker -> Celery processing
 ```
 
-The production Compose file does not run the Next.js web service. It expects an ARM64 Oracle Ampere A1 VM, a DNS record pointing `API_DOMAIN` to the VM, and inbound TCP ports `80`, `443`, and `22` allowed by the Oracle security list. PostgreSQL, Redis, and the API are private to the Compose network.
+Render's free plan does not currently include an always-on background worker. Use the local worker for development, or add a paid Render Background Worker when continuous processing is needed. Free Render Postgres expires after 30 days and free Key Value is in-memory, so this setup is for testing and early prototypes.
 
-On the VM:
+Use the full [Render deployment runbook](deploy/DEPLOYMENT.md). The short version is:
 
-```bash
-git clone https://github.com/peterciprian/VectorAI.git
-cd VectorAI
-cp deploy/.env.production.example .env.production
-# Edit .env.production with the real API hostname, email, password, and CORS origin.
-docker compose --env-file .env.production -f compose.production.yaml up -d --build
-docker compose --env-file .env.production -f compose.production.yaml ps
+```text
+1. Create a Render Blueprint from render.yaml.
+2. Keep API, Postgres, and Key Value in the same region.
+3. Enable PostGIS with CREATE EXTENSION postgis.
+4. Test /health on the generated Render API URL.
+5. Run the Celery worker locally until a paid worker is available.
 ```
 
-For a new Ubuntu ARM64 VM, `deploy/bootstrap-ubuntu-arm64.sh` installs Docker Engine and the Compose plugin. Run it once, log out and back in, then run the Compose commands above. Keep `.env.production` private and back up the named `postgres_data` and `project_storage` volumes before using real project files.
+The Oracle VM deployment files remain available as a legacy alternative in `compose.production.yaml` and `deploy/`.
 
 ## Deploy the UI to GitHub Pages
 
