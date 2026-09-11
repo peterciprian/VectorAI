@@ -397,7 +397,7 @@ sequenceDiagram
     Worker->>Worker: Inpaint text labels on raster
     Worker->>Worker: Segment polygons, trace lines, extract points
     Worker->>Worker: Topology snapping & sliver cleaning
-    Worker->>DB: INSERT vector geometries into PostGIS layers
+    Worker->>DB: INSERT Point, LineString, and Polygon geometries into PostGIS vector_features
     Worker->>FS: Write GeoJSONs & Shapefile archives
     Worker->>Redis: Publish SSE event (stage='VECTORIZATION_COMPLETED')
     API-->>FE: SSE: { stage: 'VECTORIZATION_COMPLETED', layers: [...] }

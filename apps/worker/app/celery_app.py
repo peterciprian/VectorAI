@@ -1,7 +1,5 @@
 import os
 import asyncio
-import json
-import asyncpg
 
 from celery import Celery
 
@@ -11,6 +9,7 @@ from .legend import parse_legend
 from .vectorizer import polygonize_class
 from .line_vectorizer import vectorize_line_class
 from .point_vectorizer import vectorize_point_class
+from .persistence import persist_vector_features
 
 
 async def _persist_legend_registry(project_id: str, registry: dict[str, object]) -> None:
@@ -100,56 +99,20 @@ def parse_legend_task(project_id: str, source_path: str, storage_root: str, bbox
 
 @celery_app.task(name="vectoryai.vectorize_polygon")
 def vectorize_polygon_task(project_id: str, legend_item: dict[str, object], storage_root: str) -> dict[str, object]:
-    return polygonize_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
+    result = polygonize_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
+    result["persisted_feature_count"] = asyncio.run(persist_vector_features(project_id, result, storage_root))
+    return result
 
 
 @celery_app.task(name="vectoryai.vectorize_line")
 def vectorize_line_task(project_id: str, legend_item: dict[str, object], storage_root: str) -> dict[str, object]:
-    return vectorize_line_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
+    result = vectorize_line_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
+    result["persisted_feature_count"] = asyncio.run(persist_vector_features(project_id, result, storage_root))
+    return result
 
 
 @celery_app.task(name="vectoryai.vectorize_point")
 def vectorize_point_task(project_id: str, legend_item: dict[str, object], storage_root: str) -> dict[str, object]:
     result = vectorize_point_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
-    database_url = os.getenv("DATABASE_URL")
-    if database_url:
-        asyncio.run(_persist_point_features(project_id, result, storage_root))
+    result["persisted_feature_count"] = asyncio.run(persist_vector_features(project_id, result, storage_root))
     return result
-
-
-async def _persist_point_features(project_id: str, result: dict[str, object], storage_root: str) -> None:
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        return
-    connection = await asyncpg.connect(database_url.replace("postgresql+asyncpg://", "postgresql://"))
-    try:
-        await connection.execute("""
-            CREATE TABLE IF NOT EXISTS point_features (
-                id BIGSERIAL PRIMARY KEY,
-                project_id TEXT NOT NULL,
-                layer_id TEXT NOT NULL,
-                geometry geometry(Point, 23700) NOT NULL,
-                properties JSONB NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                UNIQUE (project_id, layer_id, geometry)
-            )
-        """)
-        layer_path = os.path.join(storage_root, project_id, "layers", f"{result['layer_id']}.geojson")
-        collection = json.loads(open(layer_path, encoding="utf-8").read())
-        await connection.execute(
-            "DELETE FROM point_features WHERE project_id = $1 AND layer_id = $2",
-            project_id,
-            result["layer_id"],
-        )
-        await connection.executemany(
-            """INSERT INTO point_features (project_id, layer_id, geometry, properties)
-               VALUES ($1, $2, ST_SetSRID(ST_GeomFromGeoJSON($3), 23700), $4::jsonb)
-               ON CONFLICT (project_id, layer_id, geometry) DO UPDATE SET properties = EXCLUDED.properties""",
-            [
-                (project_id, result["layer_id"], json.dumps(feature["geometry"]), json.dumps(feature.get("properties", {})))
-                for feature in collection.get("features", [])
-            ],
-        )
-        result["persisted_feature_count"] = len(collection.get("features", []))
-    finally:
-        await connection.close()

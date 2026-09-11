@@ -3,7 +3,9 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
+from app.main import export_shapefile
 from app.exporter import EOV_WKT, export_project_shapefiles
 
 
@@ -37,3 +39,19 @@ class ExporterTests(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 export_project_shapefiles("project", str(root))
+
+    def test_export_download_endpoint_returns_generated_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            project = root / "project"
+            (project / "legend").mkdir(parents=True)
+            (project / "layers").mkdir()
+            (project / "legend" / "registry.json").write_text(json.dumps({"items": [{"id": "points", "code": "PTS", "name": "Points", "geometry_type": "Point", "enabled": True}]}), encoding="utf-8")
+            (project / "layers" / "points.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [650000, 230000]}, "properties": {"label": "Test"}}]}), encoding="utf-8")
+
+            with patch("app.main.storage_root", root):
+                response = export_shapefile("project")
+
+            self.assertEqual(response.media_type, "application/zip")
+            self.assertEqual(response.filename, "export_project_project.zip")
+            self.assertTrue(Path(response.path).exists())

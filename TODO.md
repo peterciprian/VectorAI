@@ -94,7 +94,7 @@ This file records known gaps and limitations identified while implementing PBIs.
 - [x] Add attribute-name sanitization and Hungarian encoding tests.
 - [x] Add GeoJSON layer catalog and download endpoints.
 - [x] Add a viewer action for downloading the generated Shapefile ZIP.
-- [ ] Persist Polygon and LineString features in PostGIS for export/edit parity with Point layers.
+- [x] Persist Polygon, LineString, and Point features in PostGIS for export/edit parity.
 - [ ] Add vector layer editor interactions: select, modify, draw, delete, snap, split, and merge.
 - [ ] Add attribute inspection and feature-edit persistence.
 - [ ] Add topology validation panel and one-click cleanup integration.
