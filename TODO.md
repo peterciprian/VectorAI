@@ -64,7 +64,8 @@ This file records known gaps and limitations identified while implementing PBIs.
 - [ ] Add realistic municipal raster fixtures with known polygon ground truth.
 - [ ] Measure geometric IoU against manually digitized reference polygons.
 - [ ] Add multi-window/vectorization tests on large raster inputs.
-- [ ] Integrate OCR text masking/inpainting from PBI-13 before polygonization.
+- [x] Integrate OCR text masking/inpainting from PBI-13 before polygonization.
+- [x] Add deterministic OCR-mask/inpainting fixture coverage.
 - [ ] Improve segmentation with full HSV/Lab tolerance controls and class-specific signatures.
 - [ ] Handle disconnected regions, holes, and multipart polygons explicitly.
 - [ ] Add polygon area/shape quality thresholds based on EOV units.

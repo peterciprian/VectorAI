@@ -262,7 +262,7 @@ flowchart TD
 
 ### 3.5. Module 5: Multi-Layer Vectorization Engine (`apps.vectorizer`)
 
-The initial implemented vectorizer slice is exposed by `POST /api/v1/projects/{id}/vectorize` and asynchronously runs a reviewed Polygon legend class through Lab-distance color masking, morphological cleanup, raster polygonization, validity repair, and simplification. It writes a strict Polygon GeoJSON layer under the project storage and serves it through `GET /api/v1/projects/{id}/layers/{layer_id}/geojson`.
+The initial implemented vectorizer slice is exposed by `POST /api/v1/projects/{id}/vectorize` and asynchronously runs a reviewed Polygon legend class through OCR text-box masking, OpenCV Telea inpainting, Lab-distance color masking, morphological cleanup, raster polygonization, validity repair, and simplification. It writes a strict Polygon GeoJSON layer under the project storage and serves it through `GET /api/v1/projects/{id}/layers/{layer_id}/geojson`.
 
 The LineString slice uses the same reviewed legend contract, Lab-distance masking, morphological closing, skeletonization, graph tracing, simplification, and strict LineString GeoJSON output through the same asynchronous vectorize endpoint. The Point slice uses Lab connected components and an optional project-relative OpenCV template fallback for symbols whose color is not sufficiently isolated; generated Point features are written to GeoJSON and persisted in PostGIS with EPSG:23700 geometry and symbol metadata. The API exposes a generated-layer catalog, which the OpenLayers viewer discovers and renders automatically.
 

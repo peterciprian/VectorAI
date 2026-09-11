@@ -3,11 +3,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import numpy as np
 from PIL import Image, ImageDraw
 
 from app.vectorizer import polygonize_class
 from app.line_vectorizer import vectorize_line_class
 from app.point_vectorizer import vectorize_point_class
+from app.inpaint import inpaint_text_regions
 
 
 class VectorizerTests(unittest.TestCase):
@@ -28,6 +30,16 @@ class VectorizerTests(unittest.TestCase):
             self.assertGreater(result["feature_count"], 0)
             self.assertTrue(all(feature["geometry"]["type"] == "Polygon" for feature in collection["features"]))
             self.assertEqual(collection["crs"]["properties"]["name"], "EPSG:23700")
+
+    def test_text_inpainting_fills_label_mask_before_polygonization(self) -> None:
+        image = np.full((40, 40, 3), [40, 160, 80], dtype=np.uint8)
+        image[15:25, 15:25] = [0, 0, 0]
+
+        cleaned, mask, boxes = inpaint_text_regions(image, boxes=[(15, 15, 10, 10)], dilation=0, radius=3)
+
+        self.assertEqual(boxes, [(15, 15, 10, 10)])
+        self.assertGreater(int(mask.sum()), 0)
+        self.assertLess(float(np.linalg.norm(cleaned[20, 20].astype(float) - np.array([40, 160, 80]))), 80)
 
     def test_non_polygon_class_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

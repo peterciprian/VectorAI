@@ -12,6 +12,8 @@ from rasterio.features import shapes
 from shapely.geometry import shape
 from shapely.validation import explain_validity
 
+from .inpaint import inpaint_text_regions
+
 
 def _pixel_transform(project_directory: Path) -> Affine:
     metadata_path = project_directory / "georef" / "metadata.json"
@@ -47,6 +49,12 @@ def polygonize_class(
     if not raster_path.exists():
         raise FileNotFoundError("Ingested master raster is not ready")
     image = cv2.cvtColor(cv2.imread(str(raster_path), cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+    if legend_item.get("inpaint_text", True):
+        image, _, _ = inpaint_text_regions(
+            image,
+            dilation=int(legend_item.get("text_mask_dilation", 3)),
+            radius=int(legend_item.get("inpaint_radius", 3)),
+        )
     mask = _color_mask(image, legend_item.get("color_rgb", [0, 0, 0]), int(legend_item.get("color_tolerance", 18)))
     transform = _pixel_transform(project_directory)
     features: list[dict[str, Any]] = []
