@@ -15,6 +15,8 @@ from fastapi.responses import FileResponse
 from PIL import Image
 from pydantic import BaseModel, Field
 
+from .exporter import export_project_shapefiles
+
 cors_origins = [
     origin.strip()
     for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
@@ -442,6 +444,17 @@ def vector_layer_catalog(project_id: str) -> dict[str, object]:
             "geojson_url": f"/api/v1/projects/{project_id}/layers/{layer_id}/geojson",
         })
     return {"project_id": project_id, "layers": layers}
+
+
+@app.get("/api/v1/projects/{project_id}/export/shapefile")
+def export_shapefile(project_id: str) -> FileResponse:
+    try:
+        archive_path = export_project_shapefiles(project_id, str(storage_root))
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return FileResponse(archive_path, media_type="application/zip", filename=archive_path.name)
 
 
 @app.get("/api/v1/projects/{project_id}/deepzoom")

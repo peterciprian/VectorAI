@@ -90,9 +90,11 @@ This file records known gaps and limitations identified while implementing PBIs.
 
 ## PBI-10/PBI-11/PBI-15: Export, Layers, Editing
 
-- [ ] Implement strict single-geometry Shapefile packaging with `.prj`, `.cpg`, metadata, and README.
-- [ ] Add attribute-name sanitization and Hungarian encoding tests.
-- [ ] Add GeoJSON layer catalog and download endpoints.
+- [x] Implement strict single-geometry Shapefile packaging with `.prj`, `.cpg`, metadata, and README.
+- [x] Add attribute-name sanitization and Hungarian encoding tests.
+- [x] Add GeoJSON layer catalog and download endpoints.
+- [x] Add a viewer action for downloading the generated Shapefile ZIP.
+- [ ] Persist Polygon and LineString features in PostGIS for export/edit parity with Point layers.
 - [ ] Add vector layer editor interactions: select, modify, draw, delete, snap, split, and merge.
 - [ ] Add attribute inspection and feature-edit persistence.
 - [ ] Add topology validation panel and one-click cleanup integration.

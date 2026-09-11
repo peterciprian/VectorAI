@@ -115,7 +115,8 @@
     "residuals": "GCP maradékhiba-vektorok",
     "referenceOpacity": "Referencia átlátszósága",
     "rasterOpacity": "Raszter átlátszósága",
-    "cursor": "EOV kurzorkoordináták"
+    "cursor": "EOV kurzorkoordináták",
+    "downloadShapefile": "Shapefile ZIP letöltése"
   },
   "legend": {
     "back": "Vissza a térképhez",

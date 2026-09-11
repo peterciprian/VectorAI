@@ -115,7 +115,8 @@
     "residuals": "GCP residual vectors",
     "referenceOpacity": "Reference opacity",
     "rasterOpacity": "Raster opacity",
-    "cursor": "EOV cursor coordinates"
+    "cursor": "EOV cursor coordinates",
+    "downloadShapefile": "Download Shapefile ZIP"
   },
   "legend": {
     "back": "Back to map",

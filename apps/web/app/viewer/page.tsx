@@ -277,6 +277,13 @@ export default function ViewerPage() {
           <div ref={mapElement} className="viewer-map" />
           <aside className="layer-panel">
             <p className="section-kicker">{content.viewer.layers}</p>
+            <a
+              className="primary-button"
+              href={`${apiBase}/api/v1/projects/${projectId}/export/shapefile`}
+              download
+            >
+              {content.viewer.downloadShapefile}
+            </a>
             <label>
               <input
                 type="checkbox"
