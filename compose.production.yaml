@@ -9,6 +9,13 @@ services:
       REDIS_URL: redis://redis:6379/0
       STORAGE_ROOT: /storage/projects
       CORS_ORIGINS: ${CORS_ORIGINS}
+      WMTS_BASE_URL: ${WMTS_BASE_URL:-https://nta.lechnerkozpont.hu/ntawmts}
+      WMTS_USERNAME: ${WMTS_USERNAME:-}
+      WMTS_PASSWORD: ${WMTS_PASSWORD:-}
+      WMTS_LAYER: ${WMTS_LAYER:-}
+      WMTS_MATRIX_SET: ${WMTS_MATRIX_SET:-}
+      WMTS_STYLE: ${WMTS_STYLE:-default}
+      WMTS_FORMAT: ${WMTS_FORMAT:-}
     expose:
       - "8000"
     volumes:

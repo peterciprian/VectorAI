@@ -26,6 +26,7 @@ import Stroke from "ol/style/Stroke";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import { getTranslations, type Locale } from "../../lib/i18n";
+import { applyWmtsBaseLayer } from "../../lib/wmts";
 
 proj4.defs(
   "EPSG:23700",
@@ -221,10 +222,11 @@ export default function GeorefPage() {
         extent: [0, 0, metadata.width, metadata.height],
       }),
     });
+    const wmtsBaseLayer = new TileLayer({ source: new OSM() });
     const referenceMap = new OlMap({
       target: referenceElement.current,
       layers: [
-        new TileLayer({ source: new OSM() }),
+        wmtsBaseLayer,
         new VectorLayer({ source: referenceSource, style: pointStyle }),
         new VectorLayer({
           source: residualSource,
@@ -235,6 +237,7 @@ export default function GeorefPage() {
       ],
       view: new View({ center: fromLonLat([19.05, 47.5]), zoom: 7 }),
     });
+    void applyWmtsBaseLayer(wmtsBaseLayer, apiBase);
     planMapRef.current = planMap;
     referenceMapRef.current = referenceMap;
     residualSourceRef.current = residualSource;

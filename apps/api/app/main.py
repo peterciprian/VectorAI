@@ -9,7 +9,8 @@ from uuid import uuid4
 
 from celery import Celery
 import fitz
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+import httpx
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from PIL import Image
@@ -30,6 +31,15 @@ celery_client = Celery("vectoryai-api", broker=os.getenv("REDIS_URL", "redis://l
 allowed_suffixes = {".pdf", ".jpg", ".jpeg", ".png", ".tif", ".tiff"}
 reference_suffixes = {".geojson", ".json", ".tif", ".tiff"}
 max_upload_bytes = 200 * 1024 * 1024
+
+wmts_base_url = os.getenv("WMTS_BASE_URL", "https://nta.lechnerkozpont.hu/ntawmts")
+wmts_username = os.getenv("WMTS_USERNAME")
+wmts_password = os.getenv("WMTS_PASSWORD")
+wmts_layer = os.getenv("WMTS_LAYER", "")
+wmts_matrix_set = os.getenv("WMTS_MATRIX_SET", "")
+wmts_style = os.getenv("WMTS_STYLE", "default")
+# Left blank by default so the frontend derives the format from GetCapabilities instead of forcing an unsupported one.
+wmts_format = os.getenv("WMTS_FORMAT", "")
 
 
 class GroundControlPoint(BaseModel):
@@ -181,6 +191,35 @@ async def _persist_gcps(project_id: str, request: GeoreferenceRequest, selected_
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "api", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/api/v1/basemap/wmts/config")
+def wmts_config() -> dict[str, object]:
+    return {
+        "enabled": bool(wmts_username and wmts_password),
+        "url": "/api/v1/basemap/wmts" if wmts_username and wmts_password else None,
+        "layer": wmts_layer,
+        "matrix_set": wmts_matrix_set,
+        "style": wmts_style,
+        "format": wmts_format,
+    }
+
+
+@app.get("/api/v1/basemap/wmts")
+async def wmts_proxy(request: Request) -> StreamingResponse:
+    if not wmts_username or not wmts_password:
+        raise HTTPException(status_code=503, detail="The WMTS base layer is not configured")
+    try:
+        async with httpx.AsyncClient(auth=(wmts_username, wmts_password), timeout=20.0) as client:
+            upstream = await client.get(wmts_base_url, params=request.query_params, follow_redirects=True)
+    except httpx.HTTPError as error:
+        raise HTTPException(status_code=502, detail="The WMTS upstream service is unavailable") from error
+    if upstream.status_code == 401:
+        raise HTTPException(status_code=502, detail="The WMTS service rejected the configured credentials")
+    if upstream.status_code >= 400:
+        raise HTTPException(status_code=502, detail="The WMTS upstream service returned an error")
+    content_type = upstream.headers.get("content-type", "application/octet-stream")
+    return StreamingResponse(iter([upstream.content]), media_type=content_type)
 
 
 def _validate_source(source_path: Path, suffix: str, page_number: int) -> int:

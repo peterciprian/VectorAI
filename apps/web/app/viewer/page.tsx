@@ -30,6 +30,7 @@ import union from "@turf/union";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import { getTranslations, type Locale } from "../../lib/i18n";
+import { applyWmtsBaseLayer } from "../../lib/wmts";
 
 proj4.defs(
   "EPSG:23700",
@@ -114,6 +115,7 @@ export default function ViewerPage() {
           opacity: referenceOpacity,
           source: new OSM(),
         });
+        void applyWmtsBaseLayer(referenceLayer, apiBase);
         const residualSource = new VectorSource();
         (georef.residuals || []).forEach(
           (residual: {
