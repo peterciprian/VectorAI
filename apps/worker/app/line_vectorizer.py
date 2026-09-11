@@ -10,6 +10,7 @@ import rasterio
 from affine import Affine
 from shapely.geometry import LineString
 from shapely.validation import explain_validity
+import networkx as nx
 from skimage.morphology import skeletonize
 
 from .vectorizer import _pixel_transform
@@ -28,8 +29,58 @@ def _line_mask(image: np.ndarray, color_rgb: list[int], tolerance: int) -> np.nd
 def _pixel_line_transform(project_directory: Path) -> Affine:
     return _pixel_transform(project_directory)
 
+def _skeleton_graph(skeleton: np.ndarray) -> nx.Graph:
+    graph = nx.Graph()
+    height, width = skeleton.shape
+    pixels = [tuple(int(value) for value in point) for point in np.argwhere(skeleton)]
+    pixel_set = set(pixels)
+    for row, column in pixels:
+        graph.add_node((row, column))
+        for row_offset in (-1, 0, 1):
+            for column_offset in (-1, 0, 1):
+                neighbor = (row + row_offset, column + column_offset)
+                if neighbor != (row, column) and neighbor in pixel_set:
+                    graph.add_edge((row, column), neighbor, weight=1.4142 if row_offset and column_offset else 1.0)
+    return graph
 
-def vectorize_line_class(
+
+def _trace_paths(graph: nx.Graph, min_pixels: int = 8) -> list[list[tuple[int, int]]]:
+    special_nodes = {node for node, degree in graph.degree() if degree != 2}
+    used_edges: set[frozenset[tuple[int, int]]] = set()
+    paths: list[list[tuple[int, int]]] = []
+
+    def edge_key(first: tuple[int, int], second: tuple[int, int]) -> frozenset[tuple[int, int]]:
+        return frozenset((first, second))
+
+    def trace(first: tuple[int, int], second: tuple[int, int]) -> list[tuple[int, int]]:
+        path = [first, second]
+        previous, current = first, second
+        used_edges.add(edge_key(previous, current))
+        while current not in special_nodes:
+            candidates = [node for node in graph.neighbors(current) if node != previous and edge_key(current, node) not in used_edges]
+            if not candidates:
+                break
+            next_node = candidates[0]
+            used_edges.add(edge_key(current, next_node))
+            path.append(next_node)
+            previous, current = current, next_node
+        return path
+
+    for node in special_nodes:
+        for neighbor in graph.neighbors(node):
+            if edge_key(node, neighbor) not in used_edges:
+                path = trace(node, neighbor)
+                if len(path) >= min_pixels:
+                    paths.append(path)
+
+    for first, second in graph.edges():
+        if edge_key(first, second) in used_edges:
+            continue
+        path = trace(first, second)
+        if len(path) >= min_pixels:
+            paths.append(path)
+    return paths
+
     project_id: str,
     storage_root: str,
     legend_item: dict[str, Any],
@@ -44,8 +95,9 @@ def vectorize_line_class(
     image = cv2.cvtColor(cv2.imread(str(raster_path), cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
     mask = _line_mask(image, legend_item.get("color_rgb", [0, 0, 0]), int(legend_item.get("color_tolerance", 18)))
     skeleton = skeletonize(mask > 0)
-    transform = _pixel_line_transform(project_directory)
-    features: list[dict[str, Any]] = []
+    skeleton = skeletonize(_line_mask(image, legend_item.get("color_rgb", [0, 0, 0]), int(legend_item.get("color_tolerance", 18))) > 0)
+    graph = _skeleton_graph(skeleton)
+    paths = _trace_paths(graph)
     contours, _ = cv2.findContours(skeleton.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     for contour in contours:
         if len(contour) < 2:

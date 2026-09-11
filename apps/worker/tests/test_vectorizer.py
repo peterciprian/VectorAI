@@ -51,6 +51,22 @@ class VectorizerTests(unittest.TestCase):
             self.assertGreater(result["feature_count"], 0)
             self.assertTrue(all(feature["geometry"]["type"] == "LineString" for feature in collection["features"]))
 
+    def test_line_graph_traces_junction_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            project = root / "project"
+            raster = project / "raster"
+            raster.mkdir(parents=True)
+            image = Image.new("RGB", (160, 160), "white")
+            draw = ImageDraw.Draw(image)
+            draw.line((80, 20, 80, 140), fill=(220, 80, 70), width=3)
+            draw.line((30, 80, 130, 80), fill=(220, 80, 70), width=3)
+            image.save(raster / "master.jpg")
+            item = {"id": "leg_junction_01", "code": "SZV", "name": "Szabalyozasi vonal", "geometry_type": "LineString", "color_rgb": [220, 80, 70], "color_tolerance": 20}
+
+            result = vectorize_line_class("project", str(root), item)
+            self.assertGreaterEqual(result["feature_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
