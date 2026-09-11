@@ -24,6 +24,9 @@ import Fill from "ol/style/Fill";
 import CircleStyle from "ol/style/Circle";
 import LineString from "ol/geom/LineString";
 import Feature from "ol/Feature";
+import { featureCollection, lineString, polygon } from "@turf/helpers";
+import intersect from "@turf/intersect";
+import union from "@turf/union";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import { getTranslations, type Locale } from "../../lib/i18n";
@@ -63,7 +66,7 @@ export default function ViewerPage() {
   const [topologyStatus, setTopologyStatus] = useState<{ valid: boolean; issue_count: number } | null>(null);
   const [topologyBusy, setTopologyBusy] = useState(false);
   const [activeLayerId, setActiveLayerId] = useState("");
-  const [editMode, setEditMode] = useState<"none" | "modify" | "draw" | "delete" | "inspect">("none");
+  const [editMode, setEditMode] = useState<"none" | "modify" | "draw" | "delete" | "inspect" | "split" | "merge">("none");
   const [editStatus, setEditStatus] = useState("");
   const [selectedProperties, setSelectedProperties] = useState<Record<string, unknown> | null>(null);
   const mapElement = useRef<HTMLDivElement>(null);
@@ -226,12 +229,14 @@ export default function ViewerPage() {
       map.addInteraction(snap);
       editInteractionRefs.current = [draw, snap];
     }
-    if (editMode === "delete" || editMode === "inspect") {
-      const select = new Select({ layers: [vectorLayer] });
+    if (["delete", "inspect", "split", "merge"].includes(editMode)) {
+      const select = new Select({ layers: [vectorLayer], multi: editMode === "merge" });
       select.on("select", (event) => {
         const feature = event.selected[0];
         if (editMode === "delete" && feature) source.removeFeature(feature);
         if (editMode === "inspect" && feature) setSelectedProperties(feature.getProperties());
+        if (editMode === "split" && feature) splitFeature(source, feature);
+        if (editMode === "merge" && event.selected.length >= 2) mergeFeatures(source, event.selected);
       });
       map.addInteraction(select);
       editInteractionRefs.current = [select];
@@ -248,6 +253,58 @@ export default function ViewerPage() {
 
   function updateDiscoveredOpacity(layerId: string, opacity: number) {
     vectorLayerRefs.current[layerId]?.setOpacity(opacity);
+  }
+
+  function replaceWithSplitFeatures(source: VectorSource, feature: Feature, splitFeatures: Feature[]) {
+    source.removeFeature(feature);
+    splitFeatures.forEach((splitFeature) => source.addFeature(splitFeature));
+    setEditStatus(`${splitFeatures.length} features created`);
+  }
+
+  function splitFeature(source: VectorSource, feature: Feature) {
+    const geometry = feature.getGeometry();
+    if (!geometry) return;
+    if (geometry.getType() === "LineString") {
+      const coordinates = (geometry as LineString).getCoordinates();
+      if (coordinates.length < 3) {
+        setEditStatus("Line needs at least three vertices to split");
+        return;
+      }
+      const midpoint = Math.floor((coordinates.length - 1) / 2);
+      const first = lineString(coordinates.slice(0, midpoint + 1) as [number, number][]);
+      const second = lineString(coordinates.slice(midpoint) as [number, number][]);
+      replaceWithSplitFeatures(source, feature, [first, second].map((result) => new GeoJSON().readFeature(result as any, { dataProjection: "EPSG:23700", featureProjection: "EPSG:23700" }) as Feature));
+      return;
+    }
+    if (geometry.getType() === "Polygon") {
+      const extent = geometry.getExtent();
+      const centerX = (extent[0] + extent[2]) / 2;
+      const halves = [
+        polygon([[[extent[0], extent[1]], [centerX, extent[1]], [centerX, extent[3]], [extent[0], extent[3]], [extent[0], extent[1]]]]),
+        polygon([[[centerX, extent[1]], [extent[2], extent[1]], [extent[2], extent[3]], [centerX, extent[3]], [centerX, extent[1]]]]),
+      ];
+      const sourcePolygon = new GeoJSON().writeFeatureObject(feature, { dataProjection: "EPSG:23700", featureProjection: "EPSG:23700" });
+      const splitFeatures: Feature[] = halves.map((half) => intersect(featureCollection([sourcePolygon as any, half as any]) as any)).filter(Boolean).map((result) => new GeoJSON().readFeature(result as any, { dataProjection: "EPSG:23700", featureProjection: "EPSG:23700" }) as Feature);
+      if (splitFeatures.length === 2) replaceWithSplitFeatures(source, feature, splitFeatures);
+      else setEditStatus("Polygon could not be split at its center");
+      return;
+    }
+    setEditStatus("Split is available for lines and polygons");
+  }
+
+  function mergeFeatures(source: VectorSource, features: Feature[]) {
+    if (features.length < 2) return;
+    const geometryType = features[0].getGeometry()?.getType();
+    if (!features.every((feature) => feature.getGeometry()?.getType() === geometryType) || !["LineString", "Polygon"].includes(geometryType || "")) {
+      setEditStatus("Merge requires two or more lines or polygons");
+      return;
+    }
+    const turfFeatures = features.map((feature) => new GeoJSON().writeFeatureObject(feature, { dataProjection: "EPSG:23700", featureProjection: "EPSG:23700" }));
+    const merged = geometryType === "Polygon" ? union(featureCollection(turfFeatures as any) as any) : lineString(turfFeatures.flatMap((feature) => (feature.geometry as any).coordinates) as [number, number][]);
+    if (!merged) return;
+    features.forEach((feature) => source.removeFeature(feature));
+    source.addFeature(new GeoJSON().readFeature(merged as any, { dataProjection: "EPSG:23700", featureProjection: "EPSG:23700" }) as Feature);
+    setEditStatus("Features merged");
   }
 
   async function validateTopology() {
@@ -412,6 +469,8 @@ export default function ViewerPage() {
                 <option value="draw">{content.viewer.editDraw}</option>
                 <option value="delete">{content.viewer.editDelete}</option>
                 <option value="inspect">{content.viewer.editInspect}</option>
+                <option value="split">{content.viewer.editSplit}</option>
+                <option value="merge">{content.viewer.editMerge}</option>
               </select>
               <button type="button" className="secondary-button" onClick={saveActiveLayer} disabled={!activeLayerId || editMode === "none"}>
                 {content.viewer.saveEdits}

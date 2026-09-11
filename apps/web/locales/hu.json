@@ -133,6 +133,8 @@
     "editDraw": "Elem rajzolása",
     "editDelete": "Elem törlése",
     "editInspect": "Attribútumok megtekintése",
+    "editSplit": "Elem felosztása",
+    "editMerge": "Kiválasztott elemek egyesítése",
     "saveEdits": "Módosítások mentése"
   },
   "legend": {

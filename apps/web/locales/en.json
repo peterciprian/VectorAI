@@ -133,6 +133,8 @@
     "editDraw": "Draw feature",
     "editDelete": "Delete feature",
     "editInspect": "Inspect attributes",
+    "editSplit": "Split feature",
+    "editMerge": "Merge selected features",
     "saveEdits": "Save edits"
   },
   "legend": {

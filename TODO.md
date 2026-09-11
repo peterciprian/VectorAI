@@ -101,7 +101,8 @@ This file records known gaps and limitations identified while implementing PBIs.
 - [x] Persist Polygon, LineString, and Point features in PostGIS for export/edit parity.
 - [x] Add vector layer editor interactions: select, modify, draw, delete, and snap.
 - [x] Add attribute inspection and feature-edit persistence.
-- [ ] Add geometry split and merge commands.
+- [x] Add geometry split and merge commands for active Polygon and LineString layers.
+- [ ] Add editor undo/redo history and richer attribute editing.
 - [x] Add topology validation panel and one-click cleanup integration.
 - [x] Resolve same-layer polygon overlaps through deterministic planar partitioning.
 - [x] Bridge and validate near-endpoint LineString gaps within the cleanup tolerance.
