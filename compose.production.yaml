@@ -31,6 +31,7 @@ services:
     image: vectoryai-worker:local
     restart: unless-stopped
     environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
       STORAGE_ROOT: /storage/projects
     command: celery -A app.celery_app.celery_app worker --loglevel=INFO --concurrency=1

@@ -124,6 +124,8 @@
     "titleEmphasis": "feldolgozásra készre.",
     "description": "Ellenőrizze a felismert osztályokat a vektorizálás előtt. Módosítsa a geometriát, a színtoleranciát és a feldolgozási állapotot.",
     "detect": "Jelmagyarázat felismerése",
+    "bbox": "Jelmagyarázat kivágása [xmin, ymin, xmax, ymax]",
+    "bboxHint": "Húzza a keretet vagy a fogantyúkat a jelmagyarázat kivágásához.",
     "save": "Jelmagyarázat mentése",
     "saving": "Mentés",
     "saved": "Jelmagyarázat mentve",

@@ -36,6 +36,7 @@ services:
     build:
       context: ./apps/worker
     environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vectoryai}:${POSTGRES_PASSWORD:-vectoryai_dev}@postgres:5432/${POSTGRES_DB:-vectoryai}
       REDIS_URL: redis://redis:6379/0
       STORAGE_ROOT: /storage/projects
     volumes:

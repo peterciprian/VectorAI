@@ -124,6 +124,8 @@
     "titleEmphasis": "machine-ready.",
     "description": "Review detected classes before vectorization. Adjust geometry, color tolerance, and processing state.",
     "detect": "Run legend detection",
+    "bbox": "Legend crop [xmin, ymin, xmax, ymax]",
+    "bboxHint": "Drag the frame or its handles to position the legend crop.",
     "save": "Save legend",
     "saving": "Saving",
     "saved": "Legend saved",

@@ -1,10 +1,46 @@
 import os
+import asyncio
+import asyncpg
 
 from celery import Celery
 
 from .ingestion import ingest_document
 from .georef import georeference_raster, write_georef_metadata
 from .legend import parse_legend
+
+
+async def _persist_legend_registry(project_id: str, registry: dict[str, object]) -> None:
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        return
+    connection = await asyncpg.connect(database_url.replace("postgresql+asyncpg://", "postgresql://"))
+    try:
+        await connection.execute("""
+            CREATE TABLE IF NOT EXISTS legend_classes (
+                id BIGSERIAL PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                class_id TEXT NOT NULL,
+                code TEXT NOT NULL,
+                name TEXT NOT NULL,
+                geometry_type TEXT NOT NULL,
+                color_rgb JSONB NOT NULL,
+                visual_signature JSONB,
+                color_tolerance INTEGER NOT NULL,
+                enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                UNIQUE (project_id, class_id)
+            )
+        """)
+        await connection.executemany(
+            """INSERT INTO legend_classes (project_id, class_id, code, name, geometry_type, color_rgb, visual_signature, color_tolerance, enabled)
+               VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9)
+               ON CONFLICT (project_id, class_id) DO UPDATE SET code = EXCLUDED.code, name = EXCLUDED.name,
+                 geometry_type = EXCLUDED.geometry_type, color_rgb = EXCLUDED.color_rgb,
+                 visual_signature = EXCLUDED.visual_signature, color_tolerance = EXCLUDED.color_tolerance,
+                 enabled = EXCLUDED.enabled""",
+            [(project_id, item["id"], item["code"], item["name"], item["geometry_type"], json.dumps(item.get("color_rgb", [])), json.dumps(item.get("visual_signature")), item.get("color_tolerance", 18), item.get("enabled", True)) for item in registry.get("items", [])],
+        )
+    finally:
+        await connection.close()
 
 celery_app = Celery(
     "vectoryai",
@@ -53,4 +89,6 @@ def warp_georef_task(project_id: str, gcps: list[dict[str, object]], storage_roo
 
 @celery_app.task(name="vectoryai.parse_legend")
 def parse_legend_task(project_id: str, source_path: str, storage_root: str, bbox: list[int] | None = None) -> dict[str, object]:
-    return parse_legend(project_id=project_id, source_path=source_path, storage_root=storage_root, bbox=bbox)
+    registry = parse_legend(project_id=project_id, source_path=source_path, storage_root=storage_root, bbox=bbox)
+    asyncio.run(_persist_legend_registry(project_id, registry))
+    return registry

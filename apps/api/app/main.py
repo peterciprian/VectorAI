@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 import os
 import json
 import shutil
+import asyncio
 import asyncpg
 from pathlib import Path
 from uuid import uuid4
@@ -57,6 +58,40 @@ class LegendItem(BaseModel):
 
 class LegendUpdateRequest(BaseModel):
     items: list[LegendItem]
+
+
+async def _persist_legend_items(project_id: str, items: list[LegendItem]) -> None:
+    database_url = _database_url()
+    if not database_url:
+        return
+    connection = await asyncpg.connect(database_url)
+    try:
+        await connection.execute("""
+            CREATE TABLE IF NOT EXISTS legend_classes (
+                id BIGSERIAL PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                class_id TEXT NOT NULL,
+                code TEXT NOT NULL,
+                name TEXT NOT NULL,
+                geometry_type TEXT NOT NULL,
+                color_rgb JSONB NOT NULL,
+                visual_signature JSONB,
+                color_tolerance INTEGER NOT NULL,
+                enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                UNIQUE (project_id, class_id)
+            )
+        """)
+        await connection.execute("ALTER TABLE legend_classes ADD COLUMN IF NOT EXISTS visual_signature JSONB")
+        await connection.executemany(
+                        """INSERT INTO legend_classes (project_id, class_id, code, name, geometry_type, color_rgb, visual_signature, color_tolerance, enabled)
+                             VALUES ($1, $2, $3, $4, $5, $6::jsonb, NULL, $7, $8)
+               ON CONFLICT (project_id, class_id) DO UPDATE SET code = EXCLUDED.code, name = EXCLUDED.name,
+                 geometry_type = EXCLUDED.geometry_type, color_rgb = EXCLUDED.color_rgb,
+                                 color_tolerance = EXCLUDED.color_tolerance, enabled = EXCLUDED.enabled""",
+            [(project_id, item.id, item.code, item.name, item.geometry_type, json.dumps(item.color_rgb), item.color_tolerance, item.enabled) for item in items],
+        )
+    finally:
+        await connection.close()
 
 app = FastAPI(title="VectoryAI API", version="0.1.0")
 app.add_middleware(
@@ -338,6 +373,10 @@ def update_legend(project_id: str, request: LegendUpdateRequest) -> dict[str, ob
     registry["items"] = [item.model_dump() for item in request.items]
     registry["status"] = "reviewed"
     registry_path.write_text(json.dumps(registry, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        asyncio.run(_persist_legend_items(project_id, request.items))
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Legend database persistence is unavailable") from error
     return {"updated_count": len(request.items), "status": "reviewed"}
 
 
