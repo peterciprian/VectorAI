@@ -262,6 +262,8 @@ flowchart TD
 
 The initial implemented vectorizer slice is exposed by `POST /api/v1/projects/{id}/vectorize` and asynchronously runs a reviewed Polygon legend class through Lab-distance color masking, morphological cleanup, raster polygonization, validity repair, and simplification. It writes a strict Polygon GeoJSON layer under the project storage and serves it through `GET /api/v1/projects/{id}/layers/{layer_id}/geojson`.
 
+The LineString slice uses the same reviewed legend contract, Lab-distance masking, morphological closing, skeletonization, contour tracing, simplification, and strict LineString GeoJSON output through the same asynchronous vectorize endpoint.
+
 ```mermaid
 flowchart TD
     A[Clean Raster Image] --> B{Geometry Target}
