@@ -97,7 +97,8 @@ This file records known gaps and limitations identified while implementing PBIs.
 - [x] Persist Polygon, LineString, and Point features in PostGIS for export/edit parity.
 - [ ] Add vector layer editor interactions: select, modify, draw, delete, snap, split, and merge.
 - [ ] Add attribute inspection and feature-edit persistence.
-- [ ] Add topology validation panel and one-click cleanup integration.
+- [x] Add topology validation panel and one-click cleanup integration.
+- [ ] Add topology browser tests and stronger line endpoint/gap validation.
 
 ## PBI-12: Async Progress and Jobs
 

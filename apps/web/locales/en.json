@@ -116,7 +116,12 @@
     "referenceOpacity": "Reference opacity",
     "rasterOpacity": "Raster opacity",
     "cursor": "EOV cursor coordinates",
-    "downloadShapefile": "Download Shapefile ZIP"
+    "downloadShapefile": "Download Shapefile ZIP",
+    "validateTopology": "Validate topology",
+    "cleanTopology": "Auto-clean and snap",
+    "topologyValid": "Topology is valid",
+    "topologyIssues": "topology issues found",
+    "topologyUnavailable": "Topology validation unavailable"
   },
   "legend": {
     "back": "Back to map",

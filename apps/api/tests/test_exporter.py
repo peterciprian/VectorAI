@@ -5,6 +5,8 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
+from fastapi import HTTPException
+
 from app.main import export_shapefile
 from app.exporter import EOV_WKT, export_project_shapefiles
 
@@ -55,3 +57,18 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(response.media_type, "application/zip")
             self.assertEqual(response.filename, "export_project_project.zip")
             self.assertTrue(Path(response.path).exists())
+
+    def test_export_download_endpoint_blocks_invalid_topology(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            project = root / "project"
+            (project / "legend").mkdir(parents=True)
+            layer = project / "layers"
+            layer.mkdir()
+            (project / "legend" / "registry.json").write_text(json.dumps({"items": [{"id": "zones", "code": "Z", "name": "Zones", "geometry_type": "Polygon", "enabled": True}]}), encoding="utf-8")
+            (layer / "zones.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]]}, "properties": {}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[1, 1], [3, 1], [3, 3], [1, 3], [1, 1]]]}, "properties": {}}]}), encoding="utf-8")
+
+            with patch("app.main.storage_root", root), self.assertRaises(HTTPException) as context:
+                export_shapefile("project")
+
+            self.assertEqual(context.exception.status_code, 422)

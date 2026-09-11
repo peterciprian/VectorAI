@@ -16,6 +16,7 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 from .exporter import export_project_shapefiles
+from .topology import clean_project_topology, validate_project_topology
 
 cors_origins = [
     origin.strip()
@@ -449,12 +450,31 @@ def vector_layer_catalog(project_id: str) -> dict[str, object]:
 @app.get("/api/v1/projects/{project_id}/export/shapefile")
 def export_shapefile(project_id: str) -> FileResponse:
     try:
+        topology = validate_project_topology(str(storage_root), project_id)
+        if not topology["valid"]:
+            raise HTTPException(status_code=422, detail={"message": "Topology validation failed", "validation": topology})
         archive_path = export_project_shapefiles(project_id, str(storage_root))
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     return FileResponse(archive_path, media_type="application/zip", filename=archive_path.name)
+
+
+@app.get("/api/v1/projects/{project_id}/topology/validate")
+def validate_topology(project_id: str) -> dict[str, object]:
+    project_directory = storage_root / project_id
+    if not project_directory.exists():
+        raise HTTPException(status_code=404, detail="Project not found")
+    return validate_project_topology(str(storage_root), project_id)
+
+
+@app.post("/api/v1/projects/{project_id}/topology/clean")
+def clean_topology(project_id: str) -> dict[str, object]:
+    project_directory = storage_root / project_id
+    if not project_directory.exists():
+        raise HTTPException(status_code=404, detail="Project not found")
+    return clean_project_topology(str(storage_root), project_id)
 
 
 @app.get("/api/v1/projects/{project_id}/deepzoom")

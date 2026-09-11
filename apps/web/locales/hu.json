@@ -116,7 +116,12 @@
     "referenceOpacity": "Referencia átlátszósága",
     "rasterOpacity": "Raszter átlátszósága",
     "cursor": "EOV kurzorkoordináták",
-    "downloadShapefile": "Shapefile ZIP letöltése"
+    "downloadShapefile": "Shapefile ZIP letöltése",
+    "validateTopology": "Topológia ellenőrzése",
+    "cleanTopology": "Automatikus tisztítás és illesztés",
+    "topologyValid": "A topológia érvényes",
+    "topologyIssues": "topológiai hiba",
+    "topologyUnavailable": "A topológia-ellenőrzés nem érhető el"
   },
   "legend": {
     "back": "Vissza a térképhez",

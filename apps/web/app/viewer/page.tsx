@@ -56,6 +56,8 @@ export default function ViewerPage() {
     [number, number] | null
   >(null);
   const [discoveredLayers, setDiscoveredLayers] = useState<DiscoveredLayer[]>([]);
+  const [topologyStatus, setTopologyStatus] = useState<{ valid: boolean; issue_count: number } | null>(null);
+  const [topologyBusy, setTopologyBusy] = useState(false);
   const mapElement = useRef<HTMLDivElement>(null);
   const mapRef = useRef<OlMap | null>(null);
   const rasterLayerRef = useRef<WebGLTileLayer | null>(null);
@@ -199,6 +201,33 @@ export default function ViewerPage() {
     vectorLayerRefs.current[layerId]?.setOpacity(opacity);
   }
 
+  async function validateTopology() {
+    setTopologyBusy(true);
+    try {
+      const response = await fetch(`${apiBase}/api/v1/projects/${projectId}/topology/validate`);
+      if (!response.ok) throw new Error("Topology validation failed");
+      setTopologyStatus(await response.json());
+    } catch {
+      setTopologyStatus(null);
+    } finally {
+      setTopologyBusy(false);
+    }
+  }
+
+  async function cleanTopology() {
+    setTopologyBusy(true);
+    try {
+      const response = await fetch(`${apiBase}/api/v1/projects/${projectId}/topology/clean`, { method: "POST" });
+      if (!response.ok) throw new Error("Topology cleanup failed");
+      const result = await response.json();
+      setTopologyStatus(result.validation);
+    } catch {
+      setTopologyStatus(null);
+    } finally {
+      setTopologyBusy(false);
+    }
+  }
+
   function updateLayer(
     layer: "raster" | "reference" | "residual",
     visible: boolean,
@@ -284,6 +313,23 @@ export default function ViewerPage() {
             >
               {content.viewer.downloadShapefile}
             </a>
+            <div className="viewer-topology">
+              <button type="button" className="secondary-button" onClick={validateTopology} disabled={topologyBusy}>
+                {content.viewer.validateTopology}
+              </button>
+              {topologyStatus && (
+                <p className={topologyStatus.valid ? "topology-valid" : "upload-error"}>
+                  {topologyStatus.valid
+                    ? content.viewer.topologyValid
+                    : `${topologyStatus.issue_count} ${content.viewer.topologyIssues}`}
+                </p>
+              )}
+              {topologyStatus && !topologyStatus.valid && (
+                <button type="button" className="secondary-button" onClick={cleanTopology} disabled={topologyBusy}>
+                  {content.viewer.cleanTopology}
+                </button>
+              )}
+            </div>
             <label>
               <input
                 type="checkbox"
