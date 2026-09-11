@@ -37,6 +37,18 @@ async def ensure_jobs_table(connection: asyncpg.Connection) -> None:
     await connection.execute("ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS task_args JSONB")
     await connection.execute("ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0")
     await connection.execute("ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS last_action TEXT")
+    await connection.execute("""
+        CREATE TABLE IF NOT EXISTS processing_job_events (
+            id BIGSERIAL PRIMARY KEY,
+            job_id TEXT NOT NULL,
+            status TEXT NOT NULL,
+            stage TEXT NOT NULL,
+            progress_percent DOUBLE PRECISION NOT NULL,
+            action TEXT,
+            detail JSONB,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
 
 
 async def create_job(project_id: str, job_id: str, job_type: str, task_name: str, task_args: list[object]) -> None:
@@ -47,10 +59,14 @@ async def create_job(project_id: str, job_id: str, job_type: str, task_name: str
     try:
         await ensure_jobs_table(connection)
         await connection.execute(
-                """INSERT INTO processing_jobs (id, project_id, job_type, task_name, task_args, status, stage)
-                    VALUES ($1, $2, $3, $4, $5::jsonb, 'queued', 'queued')
+            """INSERT INTO processing_jobs (id, project_id, job_type, task_name, task_args, status, stage)
+               VALUES ($1, $2, $3, $4, $5::jsonb, 'queued', 'queued')
                ON CONFLICT (id) DO NOTHING""",
-                job_id, project_id, job_type, task_name, json.dumps(task_args),
+            job_id, project_id, job_type, task_name, json.dumps(task_args),
+        )
+        await connection.execute(
+            "INSERT INTO processing_job_events (job_id, status, stage, progress_percent, action) VALUES ($1, 'queued', 'queued', 0, 'created')",
+            job_id,
         )
     finally:
         await connection.close()
@@ -85,6 +101,11 @@ async def set_job_state(job_id: str, status: str, stage: str, progress: float, e
         )
         row = await connection.fetchrow("SELECT id, project_id, job_type, task_name, task_args, retry_count, last_action, status, stage, progress_percent, error_details, created_at, started_at, finished_at FROM processing_jobs WHERE id=$1", job_id)
         result = dict(row) if row else None
+        if result:
+            await connection.execute(
+                "INSERT INTO processing_job_events (job_id, status, stage, progress_percent, action, detail) VALUES ($1, $2, $3, $4, $5, $6::jsonb)",
+                job_id, status, stage, progress, action, json.dumps({"message": error}) if error else None,
+            )
     finally:
         await connection.close()
     if result:
@@ -106,6 +127,9 @@ async def cleanup_jobs(retention_days: int = 30) -> int:
         result = await connection.execute(
             "DELETE FROM processing_jobs WHERE status IN ('completed','failed','cancelled') AND finished_at < NOW() - ($1 * INTERVAL '1 day')",
             retention_days,
+        )
+        await connection.execute(
+            "DELETE FROM processing_job_events WHERE job_id NOT IN (SELECT id FROM processing_jobs)",
         )
         return int(result.split()[-1])
     finally:

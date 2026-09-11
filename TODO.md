@@ -117,6 +117,8 @@ This file records known gaps and limitations identified while implementing PBIs.
 - [ ] Add authentication and project-level authorization.
 - [ ] Move durable source files and generated artifacts to S3-compatible object storage.
 - [x] Add processing-job retention cleanup helper for completed/failed/cancelled jobs.
+- [x] Schedule daily processing-job retention cleanup with Celery beat.
+- [x] Persist processing-job action history.
 - [ ] Add security limits for upload content, decompression bombs, and archive inputs.
 - [ ] Add API integration tests and browser end-to-end tests to CI.
 - [ ] Add production Render/worker deployment checks and secret configuration validation.

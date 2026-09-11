@@ -52,6 +52,19 @@ celery_app = Celery(
     broker=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
     backend=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
 )
+celery_app.conf.beat_schedule = {
+    "cleanup-processing-jobs-daily": {
+        "task": "vectoryai.cleanup_processing_jobs",
+        "schedule": 86400.0,
+    },
+}
+
+
+@celery_app.task(name="vectoryai.cleanup_processing_jobs")
+def cleanup_processing_jobs_task(retention_days: int = 30) -> int:
+    from .jobs import cleanup_jobs_sync
+
+    return cleanup_jobs_sync(retention_days)
 
 
 @celery_app.task(name="vectoryai.healthcheck")
