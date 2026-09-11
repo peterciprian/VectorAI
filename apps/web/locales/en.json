@@ -135,7 +135,11 @@
     "editInspect": "Inspect attributes",
     "editSplit": "Split feature",
     "editMerge": "Merge selected features",
-    "saveEdits": "Save edits"
+    "saveEdits": "Save edits",
+    "undoEdit": "Undo",
+    "redoEdit": "Redo",
+    "attributeLabel": "Label",
+    "attributeCode": "Code"
   },
   "legend": {
     "back": "Back to map",

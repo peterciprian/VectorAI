@@ -416,7 +416,7 @@ sequenceDiagram
     API-->>User: File download stream (200 OK)
 ```
 
-  Edited GeoJSON FeatureCollections are sent to `PUT /api/v1/projects/{id}/layers/{layer_id}/features`; the API validates the layer's single geometry type, updates the file artifact, and synchronizes the `vector_features` PostGIS table. The viewer supports modify, draw, delete, snap, split, merge, and attribute inspection modes for active Polygon and LineString layers.
+  Edited GeoJSON FeatureCollections are sent to `PUT /api/v1/projects/{id}/layers/{layer_id}/features`; the API validates the layer's single geometry type, updates the file artifact, and synchronizes the `vector_features` PostGIS table. The viewer supports modify, draw, delete, snap, split, merge, editable label/code attributes, and bounded undo/redo history for active Polygon and LineString layers.
 
 ---
 

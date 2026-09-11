@@ -135,7 +135,11 @@
     "editInspect": "Attribútumok megtekintése",
     "editSplit": "Elem felosztása",
     "editMerge": "Kiválasztott elemek egyesítése",
-    "saveEdits": "Módosítások mentése"
+    "saveEdits": "Módosítások mentése",
+    "undoEdit": "Visszavonás",
+    "redoEdit": "Újra",
+    "attributeLabel": "Címke",
+    "attributeCode": "Kód"
   },
   "legend": {
     "back": "Vissza a térképhez",

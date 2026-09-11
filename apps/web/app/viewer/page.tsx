@@ -69,6 +69,7 @@ export default function ViewerPage() {
   const [editMode, setEditMode] = useState<"none" | "modify" | "draw" | "delete" | "inspect" | "split" | "merge">("none");
   const [editStatus, setEditStatus] = useState("");
   const [selectedProperties, setSelectedProperties] = useState<Record<string, unknown> | null>(null);
+  const [historyVersion, setHistoryVersion] = useState(0);
   const mapElement = useRef<HTMLDivElement>(null);
   const mapRef = useRef<OlMap | null>(null);
   const rasterLayerRef = useRef<WebGLTileLayer | null>(null);
@@ -76,6 +77,8 @@ export default function ViewerPage() {
   const residualLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const vectorLayerRefs = useRef<Record<string, VectorLayer<VectorSource>>>({});
   const editInteractionRefs = useRef<(Modify | Draw | Snap | Select)[]>([]);
+  const selectedFeatureRef = useRef<Feature | null>(null);
+  const historyRef = useRef<Record<string, { past: object[]; future: object[] }>>({});
   const content = getTranslations(locale);
 
   useEffect(() => {
@@ -212,10 +215,12 @@ export default function ViewerPage() {
     editInteractionRefs.current.forEach((interaction) => map?.removeInteraction(interaction));
     editInteractionRefs.current = [];
     setSelectedProperties(null);
+    selectedFeatureRef.current = null;
     if (!map || !source || editMode === "none") return;
     if (editMode === "modify") {
       const modify = new Modify({ source });
       const snap = new Snap({ source });
+      modify.on("modifystart", () => recordHistory(activeLayerId));
       map.addInteraction(modify);
       map.addInteraction(snap);
       editInteractionRefs.current = [modify, snap];
@@ -225,6 +230,7 @@ export default function ViewerPage() {
       if (!layer) return;
       const draw = new Draw({ source, type: layer.geometry_type as "Point" | "LineString" | "Polygon" });
       const snap = new Snap({ source });
+      draw.on("drawstart", () => recordHistory(activeLayerId));
       map.addInteraction(draw);
       map.addInteraction(snap);
       editInteractionRefs.current = [draw, snap];
@@ -233,9 +239,9 @@ export default function ViewerPage() {
       const select = new Select({ layers: [vectorLayer], multi: editMode === "merge" });
       select.on("select", (event) => {
         const feature = event.selected[0];
-        if (editMode === "delete" && feature) source.removeFeature(feature);
-        if (editMode === "inspect" && feature) setSelectedProperties(feature.getProperties());
-        if (editMode === "split" && feature) splitFeature(source, feature);
+        if (editMode === "delete" && feature) { recordHistory(activeLayerId); source.removeFeature(feature); }
+        if (editMode === "inspect" && feature) { selectedFeatureRef.current = feature; setSelectedProperties(feature.getProperties()); }
+        if (editMode === "split" && feature) { recordHistory(activeLayerId); splitFeature(source, feature); }
         if (editMode === "merge" && event.selected.length >= 2) mergeFeatures(source, event.selected);
       });
       map.addInteraction(select);
@@ -253,6 +259,57 @@ export default function ViewerPage() {
 
   function updateDiscoveredOpacity(layerId: string, opacity: number) {
     vectorLayerRefs.current[layerId]?.setOpacity(opacity);
+  }
+
+  function snapshotSource(layerId: string): object {
+    const source = vectorLayerRefs.current[layerId]?.getSource();
+    return source ? new GeoJSON().writeFeaturesObject(source.getFeatures(), { dataProjection: "EPSG:23700", featureProjection: "EPSG:23700" }) : { type: "FeatureCollection", features: [] };
+  }
+
+  function recordHistory(layerId: string) {
+    if (!layerId) return;
+    const history = historyRef.current[layerId] || { past: [], future: [] };
+    history.past = [...history.past.slice(-19), snapshotSource(layerId)];
+    history.future = [];
+    historyRef.current[layerId] = history;
+    setHistoryVersion((version) => version + 1);
+  }
+
+  function restoreSnapshot(layerId: string, snapshot: object) {
+    const source = vectorLayerRefs.current[layerId]?.getSource();
+    if (!source) return;
+    source.clear();
+    source.addFeatures(new GeoJSON().readFeatures(snapshot, { dataProjection: "EPSG:23700", featureProjection: "EPSG:23700" }));
+  }
+
+  function undoEdit() {
+    const history = historyRef.current[activeLayerId];
+    if (!history?.past.length) return;
+    const current = snapshotSource(activeLayerId);
+    const previous = history.past.pop();
+    if (!previous) return;
+    history.future.push(current);
+    restoreSnapshot(activeLayerId, previous);
+    setHistoryVersion((version) => version + 1);
+  }
+
+  function redoEdit() {
+    const history = historyRef.current[activeLayerId];
+    if (!history?.future.length) return;
+    const current = snapshotSource(activeLayerId);
+    const next = history.future.pop();
+    if (!next) return;
+    history.past.push(current);
+    restoreSnapshot(activeLayerId, next);
+    setHistoryVersion((version) => version + 1);
+  }
+
+  function updateSelectedProperty(property: "label" | "code", value: string) {
+    const feature = selectedFeatureRef.current;
+    if (!feature) return;
+    recordHistory(activeLayerId);
+    feature.set(property, value);
+    setSelectedProperties(feature.getProperties());
   }
 
   function replaceWithSplitFeatures(source: VectorSource, feature: Feature, splitFeatures: Feature[]) {
@@ -299,6 +356,7 @@ export default function ViewerPage() {
       setEditStatus("Merge requires two or more lines or polygons");
       return;
     }
+    recordHistory(activeLayerId);
     const turfFeatures = features.map((feature) => new GeoJSON().writeFeatureObject(feature, { dataProjection: "EPSG:23700", featureProjection: "EPSG:23700" }));
     const merged = geometryType === "Polygon" ? union(featureCollection(turfFeatures as any) as any) : lineString(turfFeatures.flatMap((feature) => (feature.geometry as any).coordinates) as [number, number][]);
     if (!merged) return;
@@ -475,8 +533,24 @@ export default function ViewerPage() {
               <button type="button" className="secondary-button" onClick={saveActiveLayer} disabled={!activeLayerId || editMode === "none"}>
                 {content.viewer.saveEdits}
               </button>
+              <button type="button" className="secondary-button" onClick={undoEdit} disabled={!activeLayerId || !(historyRef.current[activeLayerId]?.past.length) || historyVersion < 0}>
+                {content.viewer.undoEdit}
+              </button>
+              <button type="button" className="secondary-button" onClick={redoEdit} disabled={!activeLayerId || !(historyRef.current[activeLayerId]?.future.length) || historyVersion < 0}>
+                {content.viewer.redoEdit}
+              </button>
               {editStatus && <p className="upload-hint">{editStatus}</p>}
-              {selectedProperties && <pre className="viewer-properties">{JSON.stringify(selectedProperties, null, 2)}</pre>}
+              {selectedProperties && (
+                <div className="viewer-properties">
+                  <label>{content.viewer.attributeLabel}
+                    <input value={String(selectedProperties.label ?? "")} onChange={(event) => updateSelectedProperty("label", event.target.value)} />
+                  </label>
+                  <label>{content.viewer.attributeCode}
+                    <input value={String(selectedProperties.code ?? "")} onChange={(event) => updateSelectedProperty("code", event.target.value)} />
+                  </label>
+                  <pre>{JSON.stringify(selectedProperties, null, 2)}</pre>
+                </div>
+              )}
             </div>
             <label>
               <input
