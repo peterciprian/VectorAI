@@ -217,6 +217,7 @@ flowchart LR
    $$r_i = \sqrt{(Y_i^{actual} - Y_i^{calc})^2 + (X_i^{actual} - X_i^{calc})^2}$$
    $$\text{RMSE} = \sqrt{\frac{1}{N} \sum_{i=1}^{N} r_i^2}$$
 - **Warping Engine:** Executes `gdal.Warp` using `-r bilinear` or `-r lanczos` resampling and creates Cloud Optimized GeoTIFFs (COG) with internal overviews (`COMPRESS=DEFLATE`, `TILED=YES`).
+- **Implemented transform selection:** `auto` recommends affine for 3-5 GCPs, second-order polynomial for 6-9 GCPs, and TPS for 10 or more GCPs. Confirmed GCPs are persisted in the PostGIS `gcps` table before the asynchronous warp is queued. The status response includes per-point residual vectors, RMSE, warnings, and the generated COG URL.
 
 ---
 
@@ -438,7 +439,7 @@ sequenceDiagram
 #### A. GCP Georeferencing Request (`GCPPayload`)
 ```json
 {
-  "transform_method": "affine",
+  "transform_method": "auto",
   "target_crs": "EPSG:23700",
   "reference_id": "reference_01",
   "points": [

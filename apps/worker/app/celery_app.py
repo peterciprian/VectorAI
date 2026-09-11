@@ -34,11 +34,17 @@ def ingest_document_task(
 
 
 @celery_app.task(name="vectoryai.warp_georef")
-def warp_georef_task(project_id: str, gcps: list[dict[str, object]], storage_root: str) -> dict[str, object]:
+def warp_georef_task(project_id: str, gcps: list[dict[str, object]], storage_root: str, method: str = "auto") -> dict[str, object]:
     project_directory = os.path.join(storage_root, project_id)
     input_path = os.path.join(project_directory, "raster", "master.jpg")
     output_path = os.path.join(project_directory, "georef", "warped_eov.tif")
-    metadata = georeference_raster(input_path, output_path, gcps)
-    metadata["project_id"] = project_id
-    write_georef_metadata(os.path.join(project_directory, "georef", "metadata.json"), metadata)
-    return metadata
+    metadata_path = os.path.join(project_directory, "georef", "metadata.json")
+    try:
+        metadata = georeference_raster(input_path, output_path, gcps, method=method)
+        metadata["project_id"] = project_id
+        metadata["status"] = "completed"
+        write_georef_metadata(metadata_path, metadata)
+        return metadata
+    except Exception as error:
+        write_georef_metadata(metadata_path, {"project_id": project_id, "status": "failed", "error": str(error)})
+        raise

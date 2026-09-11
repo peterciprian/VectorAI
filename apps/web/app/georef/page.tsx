@@ -7,6 +7,7 @@ import OlMap from 'ol/Map';
 import View from 'ol/View';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
+import LineString from 'ol/geom/LineString';
 import TileLayer from 'ol/layer/Tile';
 import BaseLayer from 'ol/layer/Base';
 import VectorLayer from 'ol/layer/Vector';
@@ -47,6 +48,15 @@ type IngestionMetadata = {
   thumbnail: string;
 };
 
+type Residual = {
+  id: string;
+  residual_m: number;
+  actual_map_x?: number;
+  actual_map_y?: number;
+  predicted_map_x?: number;
+  predicted_map_y?: number;
+};
+
 export default function GeorefPage() {
   const [locale, setLocale] = useState<Locale>(defaultLocale);
   const [projectId, setProjectId] = useState('');
@@ -59,11 +69,14 @@ export default function GeorefPage() {
   const planMapRef = useRef<OlMap | null>(null);
   const referenceMapRef = useRef<OlMap | null>(null);
   const referenceLayerRef = useRef<BaseLayer | null>(null);
+  const residualSourceRef = useRef<VectorSource | null>(null);
   const gcpCountRef = useRef(0);
   const planElement = useRef<HTMLDivElement>(null);
   const referenceElement = useRef<HTMLDivElement>(null);
   const [georefStatus, setGeorefStatus] = useState<'idle' | 'queued' | 'completed' | 'error'>('idle');
   const [rmse, setRmse] = useState<number | null>(null);
+  const [residuals, setResiduals] = useState<Residual[]>([]);
+  const [transformMethod, setTransformMethod] = useState('auto');
   const [warnings, setWarnings] = useState<string[]>([]);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const content = getTranslations(locale);
@@ -84,13 +97,37 @@ export default function GeorefPage() {
       .then((response) => response.json())
       .then((result) => setMetadata(result.metadata))
       .catch(() => setGeorefStatus('error'));
+    fetch(`${apiBase}/api/v1/projects/${projectId}/georef/status`)
+      .then((response) => response.json())
+      .then((result) => {
+        if (result.status === 'completed') {
+          setRmse(result.rmse_m);
+          setResiduals(result.residuals || []);
+          setWarnings(result.warnings || []);
+          setGeorefStatus('completed');
+        }
+      })
+      .catch(() => undefined);
   }, [projectId]);
+
+  useEffect(() => {
+    if (!residualSourceRef.current || residuals.length === 0) return;
+    residualSourceRef.current.clear();
+    residuals.forEach((residual: { actual_map_x?: number; actual_map_y?: number; predicted_map_x?: number; predicted_map_y?: number }) => {
+      if (residual.actual_map_x === undefined || residual.actual_map_y === undefined || residual.predicted_map_x === undefined || residual.predicted_map_y === undefined) return;
+      residualSourceRef.current?.addFeature(new Feature(new LineString([
+        transform([residual.actual_map_x, residual.actual_map_y], 'EPSG:23700', 'EPSG:3857'),
+        transform([residual.predicted_map_x, residual.predicted_map_y], 'EPSG:23700', 'EPSG:3857'),
+      ])));
+    });
+  }, [residuals, metadata]);
 
   useEffect(() => {
     if (!metadata || !planElement.current || !referenceElement.current) return;
     const planProjection = new Projection({ code: 'PIXELS', units: 'pixels', extent: [0, 0, metadata.width, metadata.height] });
     const planSource = new VectorSource();
     const referenceSource = new VectorSource();
+    const residualSource = new VectorSource();
     const pointStyle = new Style({ image: new CircleStyle({ radius: 6, fill: new Fill({ color: '#e36d50' }), stroke: new Stroke({ color: '#f2f0e8', width: 2 }) }) });
     const planMap = new OlMap({
       target: planElement.current,
@@ -114,17 +151,19 @@ export default function GeorefPage() {
     });
     const referenceMap = new OlMap({
       target: referenceElement.current,
-      layers: [new TileLayer({ source: new OSM() }), new VectorLayer({ source: referenceSource, style: pointStyle })],
+      layers: [new TileLayer({ source: new OSM() }), new VectorLayer({ source: referenceSource, style: pointStyle }), new VectorLayer({ source: residualSource, style: new Style({ stroke: new Stroke({ color: '#d7f26c', width: 3 }) }) })],
       view: new View({ center: fromLonLat([19.05, 47.5]), zoom: 7 }),
     });
     planMapRef.current = planMap;
     referenceMapRef.current = referenceMap;
+    residualSourceRef.current = residualSource;
     return () => {
       planMap.setTarget(undefined);
       referenceMap.setTarget(undefined);
       planMapRef.current = null;
       referenceMapRef.current = null;
       referenceLayerRef.current = null;
+      residualSourceRef.current = null;
     };
   }, [metadata, projectId]);
 
@@ -136,7 +175,15 @@ export default function GeorefPage() {
         .then((result) => {
           if (result.status === 'completed') {
             setRmse(result.rmse_m);
+            setResiduals(result.residuals || []);
             setWarnings(result.warnings || []);
+            residualSourceRef.current?.clear();
+            result.residuals?.forEach((residual: { actual_map_x: number; actual_map_y: number; predicted_map_x: number; predicted_map_y: number }) => {
+              residualSourceRef.current?.addFeature(new Feature(new LineString([
+                transform([residual.actual_map_x, residual.actual_map_y], 'EPSG:23700', 'EPSG:3857'),
+                transform([residual.predicted_map_x, residual.predicted_map_y], 'EPSG:23700', 'EPSG:3857'),
+              ])));
+            });
             setGeorefStatus('completed');
           }
         })
@@ -154,7 +201,7 @@ export default function GeorefPage() {
     fetch(`${apiBase}/api/v1/projects/${projectId}/georef`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ transform_method: 'affine', target_crs: 'EPSG:23700', points: gcps }),
+      body: JSON.stringify({ transform_method: transformMethod, target_crs: 'EPSG:23700', points: gcps }),
     }).then((response) => {
       if (!response.ok) throw new Error('Georeferencing request failed');
       setConfirmSubmit(false);
@@ -231,7 +278,7 @@ export default function GeorefPage() {
         {metadata && <>
           <div className="map-panes"><div><p className="section-kicker">{content.upload.planPane}</p><div ref={planElement} className="map-pane" onClick={handlePlanClick} /></div><div><p className="section-kicker">{content.upload.referencePane}</p><div ref={referenceElement} className="map-pane" onClick={handleReferenceClick} /><label className="reference-upload"><span>{referenceLayerName || content.upload.referenceUpload}</span><input type="file" accept=".geojson,.json,.tif,.tiff" onChange={handleReferenceUpload} /></label>{referenceLayerName && <label className="reference-toggle"><input type="checkbox" checked={referenceLayerVisible} onChange={(event) => toggleReferenceLayer(event.target.checked)} /> {content.upload.referenceToggle}</label>}<p className="upload-hint">{content.upload.referenceFormat}</p></div></div>
           <p className="upload-hint">{pendingPixel ? `${content.upload.gcps}: ${Math.round(pendingPixel[0])}, ${Math.round(pendingPixel[1])}` : content.upload.introHint}</p>
-          <section className="gcp-panel"><h2>{content.upload.gcps}</h2>{gcps.length === 0 && <p className="upload-hint">{content.upload.emptyGcps}</p>}{gcps.map((gcp, index) => <div className="gcp-row" key={gcp.id}><span>{gcp.id}</span><input aria-label={`${content.upload.easting} ${gcp.id}`} type="number" value={gcp.map_x} onChange={(event) => updateGcp(index, 'map_x', Number(event.target.value))} /><input aria-label={`${content.upload.northing} ${gcp.id}`} type="number" value={gcp.map_y} onChange={(event) => updateGcp(index, 'map_y', Number(event.target.value))} /><button type="button" onClick={() => setGcps((current) => current.filter((_, currentIndex) => currentIndex !== index))}>{content.upload.remove}</button></div>)}</section>
+          <section className="gcp-panel"><h2>{content.upload.gcps}</h2><label className="method-picker">{content.upload.method}<select value={transformMethod} onChange={(event) => setTransformMethod(event.target.value)}><option value="auto">{content.upload.methodAuto}</option><option value="affine">{content.upload.methodAffine}</option><option value="polynomial">{content.upload.methodPolynomial}</option><option value="tps">{content.upload.methodTps}</option></select></label>{gcps.length === 0 && <p className="upload-hint">{content.upload.emptyGcps}</p>}{gcps.map((gcp, index) => <div className="gcp-row" key={gcp.id}><span>{gcp.id}</span><input aria-label={`${content.upload.easting} ${gcp.id}`} type="number" value={gcp.map_x} onChange={(event) => updateGcp(index, 'map_x', Number(event.target.value))} /><input aria-label={`${content.upload.northing} ${gcp.id}`} type="number" value={gcp.map_y} onChange={(event) => updateGcp(index, 'map_y', Number(event.target.value))} /><button type="button" onClick={() => setGcps((current) => current.filter((_, currentIndex) => currentIndex !== index))}>{content.upload.remove}</button></div>)}{residuals.length > 0 && <div className="residual-list">{residuals.map((residual) => <span key={residual.id}>{residual.id}: {residual.residual_m.toFixed(3)} m</span>)}</div>}</section>
           <div className="georef-actions"><button className="button button-primary" type="button" disabled={gcps.length < 3 || georefStatus === 'queued'} onClick={() => setConfirmSubmit(true)}>{content.upload.submitGeoref} <span aria-hidden="true">&#8599;</span></button>{georefStatus === 'queued' && <span className="upload-hint">{content.upload.georefQueued}</span>}{georefStatus === 'completed' && <span className="upload-success">{content.upload.georefComplete}: {content.upload.rmse} {rmse?.toFixed(3)} m</span>}{georefStatus === 'error' && <span className="upload-error">{content.upload.georefError}</span>}</div>
           {warnings.length > 0 && <div className="georef-warnings"><strong>{content.upload.warnings}</strong>{warnings.map((warning) => <span key={warning}>{warning}</span>)}</div>}
           {confirmSubmit && <div className="georef-confirm"><strong>{content.upload.confirmGeoref}</strong><p>{content.upload.confirmGeorefText}</p><div><button className="button button-primary" type="button" onClick={submitGeoreferencing}>{content.upload.confirm}</button><button className="text-link" type="button" onClick={() => setConfirmSubmit(false)}>{content.upload.cancel}</button></div></div>}

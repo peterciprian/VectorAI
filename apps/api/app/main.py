@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 import os
 import json
 import shutil
+import asyncpg
 from pathlib import Path
 from uuid import uuid4
 
@@ -34,7 +35,7 @@ class GroundControlPoint(BaseModel):
 
 
 class GeoreferenceRequest(BaseModel):
-    transform_method: str = "affine"
+    transform_method: str = "auto"
     target_crs: str = "EPSG:23700"
     reference_id: str | None = None
     points: list[GroundControlPoint]
@@ -47,6 +48,44 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _database_url() -> str | None:
+    value = os.getenv("DATABASE_URL")
+    return value.replace("postgresql+asyncpg://", "postgresql://") if value else None
+
+
+async def _persist_gcps(project_id: str, request: GeoreferenceRequest, selected_method: str) -> None:
+    database_url = _database_url()
+    if not database_url:
+        return
+    connection = await asyncpg.connect(database_url)
+    try:
+        await connection.execute("""
+            CREATE TABLE IF NOT EXISTS gcps (
+                id BIGSERIAL PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                gcp_id TEXT NOT NULL,
+                pixel_x DOUBLE PRECISION NOT NULL,
+                pixel_y DOUBLE PRECISION NOT NULL,
+                map_x DOUBLE PRECISION NOT NULL,
+                map_y DOUBLE PRECISION NOT NULL,
+                transform_method TEXT NOT NULL,
+                target_crs TEXT NOT NULL,
+                confirmed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (project_id, gcp_id)
+            )
+        """)
+        await connection.executemany(
+            """INSERT INTO gcps (project_id, gcp_id, pixel_x, pixel_y, map_x, map_y, transform_method, target_crs)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+               ON CONFLICT (project_id, gcp_id) DO UPDATE SET pixel_x = EXCLUDED.pixel_x, pixel_y = EXCLUDED.pixel_y,
+                 map_x = EXCLUDED.map_x, map_y = EXCLUDED.map_y, transform_method = EXCLUDED.transform_method,
+                 target_crs = EXCLUDED.target_crs, confirmed_at = NOW()""",
+            [(project_id, point.id, point.pixel_x, point.pixel_y, point.map_x, point.map_y, selected_method, request.target_crs) for point in request.points],
+        )
+    finally:
+        await connection.close()
 
 
 @app.get("/health")
@@ -152,18 +191,30 @@ def start_georeferencing(project_id: str, request: GeoreferenceRequest) -> dict[
     master_path = storage_root / project_id / "raster" / "master.jpg"
     if not master_path.exists():
         raise HTTPException(status_code=404, detail="Ingested master raster is not ready")
-    if request.transform_method != "affine":
-        raise HTTPException(status_code=422, detail="Only affine transformation is currently supported")
     if request.target_crs != "EPSG:23700":
         raise HTTPException(status_code=422, detail="Only EPSG:23700 EOV is currently supported")
     if len(request.points) < 3:
-        raise HTTPException(status_code=422, detail="Affine georeferencing requires at least 3 GCPs")
+        raise HTTPException(status_code=422, detail="Georeferencing requires at least 3 GCPs")
+    if request.transform_method not in {"auto", "affine", "polynomial", "tps"}:
+        raise HTTPException(status_code=422, detail="Transform method must be auto, affine, polynomial, or tps")
+    selected_method = request.transform_method
+    if selected_method == "auto":
+        selected_method = "affine" if len(request.points) <= 5 else "polynomial" if len(request.points) <= 9 else "tps"
+    if selected_method == "polynomial" and len(request.points) < 6:
+        raise HTTPException(status_code=422, detail="Polynomial transformation requires at least 6 GCPs")
+    if selected_method == "tps" and len(request.points) < 10:
+        raise HTTPException(status_code=422, detail="TPS transformation requires at least 10 GCPs")
 
+    try:
+        import asyncio
+        asyncio.run(_persist_gcps(project_id, request, selected_method))
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="GCP persistence is unavailable") from error
     job = celery_client.send_task(
         "vectoryai.warp_georef",
-        args=[project_id, [point.model_dump() for point in request.points], str(storage_root)],
+        args=[project_id, [point.model_dump() for point in request.points], str(storage_root), selected_method],
     )
-    return {"project_id": project_id, "job_id": job.id, "status": "queued", "target_crs": request.target_crs}
+    return {"project_id": project_id, "job_id": job.id, "status": "queued", "target_crs": request.target_crs, "transform_method": selected_method}
 
 
 @app.post("/api/v1/projects/{project_id}/georef/reference", status_code=201)
@@ -219,6 +270,8 @@ def georeference_status(project_id: str) -> dict[str, object]:
             return {"project_id": project_id, "status": "pending"}
         raise HTTPException(status_code=404, detail="Project not found")
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if metadata.get("status") == "failed":
+        return {"project_id": project_id, **metadata}
     return {"project_id": project_id, "status": "completed", **metadata, "cog_url": f"/api/v1/projects/{project_id}/georef/cog"}
 
 

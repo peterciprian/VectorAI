@@ -622,6 +622,20 @@ em {
   font-size: 1.8rem;
   margin: 0 0 1rem;
 }
+.method-picker {
+  align-items: center;
+  display: flex;
+  font-size: 0.68rem;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+.method-picker select {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: 0.68rem var(--mono);
+  padding: 0.55rem;
+}
 .gcp-row {
   align-items: center;
   border-bottom: 1px solid var(--line);
@@ -693,6 +707,13 @@ em {
   align-items: center;
   display: flex;
   gap: 1rem;
+}
+.residual-list {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.65rem;
+  gap: 0.8rem;
+  margin-top: 1rem;
 }
 @media (max-width: 850px) {
   .hero {
