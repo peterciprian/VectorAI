@@ -21,7 +21,7 @@ cors_origins = [
 storage_root = Path(os.getenv("STORAGE_ROOT", "/storage/projects"))
 celery_client = Celery("vectoryai-api", broker=os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 allowed_suffixes = {".pdf", ".jpg", ".jpeg", ".png", ".tif", ".tiff"}
-reference_suffixes = {".geojson", ".json"}
+reference_suffixes = {".geojson", ".json", ".tif", ".tiff"}
 max_upload_bytes = 200 * 1024 * 1024
 
 
@@ -177,19 +177,20 @@ async def upload_reference_layer(
     original_name = Path(file.filename or "reference.geojson").name
     suffix = Path(original_name).suffix.lower()
     if suffix not in reference_suffixes:
-        raise HTTPException(status_code=415, detail="The initial reference-layer workflow supports GeoJSON files")
+        raise HTTPException(status_code=415, detail="Reference layers must be GeoJSON, GeoTIFF, or COG files")
     project_directory = storage_root / project_id
     if not project_directory.exists():
         raise HTTPException(status_code=404, detail="Project not found")
     reference_id = f"reference_{uuid4().hex}"
     reference_directory = project_directory / "reference"
     reference_directory.mkdir(parents=True, exist_ok=True)
-    reference_path = reference_directory / f"{reference_id}.geojson"
+    reference_path = reference_directory / f"{reference_id}{suffix}"
     try:
         content = await file.read()
         if len(content) > max_upload_bytes:
             raise HTTPException(status_code=413, detail="Maximum reference-layer size is 200 MB")
-        json.loads(content.decode("utf-8-sig"))
+        if suffix in {".geojson", ".json"}:
+            json.loads(content.decode("utf-8-sig"))
         reference_path.write_bytes(content)
     except UnicodeDecodeError as error:
         raise HTTPException(status_code=422, detail="Reference layer must be valid UTF-8 JSON") from error
@@ -197,15 +198,17 @@ async def upload_reference_layer(
         raise HTTPException(status_code=422, detail="Reference layer must contain valid GeoJSON") from error
     finally:
         await file.close()
-    return {"reference_id": reference_id, "crs": crs, "filename": original_name, "url": f"/api/v1/projects/{project_id}/georef/reference/{reference_id}"}
+    return {"reference_id": reference_id, "crs": crs, "filename": original_name, "format": suffix[1:], "url": f"/api/v1/projects/{project_id}/georef/reference/{reference_id}"}
 
 
 @app.get("/api/v1/projects/{project_id}/georef/reference/{reference_id}")
 def reference_layer(project_id: str, reference_id: str) -> FileResponse:
-    reference_path = storage_root / project_id / "reference" / f"{Path(reference_id).name}.geojson"
-    if not reference_path.exists():
-        raise HTTPException(status_code=404, detail="Reference layer not found")
-    return FileResponse(reference_path, media_type="application/geo+json")
+    safe_reference_id = Path(reference_id).name
+    for suffix, media_type in ((".geojson", "application/geo+json"), (".json", "application/geo+json"), (".tif", "image/tiff"), (".tiff", "image/tiff")):
+        reference_path = storage_root / project_id / "reference" / f"{safe_reference_id}{suffix}"
+        if reference_path.exists():
+            return FileResponse(reference_path, media_type=media_type)
+    raise HTTPException(status_code=404, detail="Reference layer not found")
 
 
 @app.get("/api/v1/projects/{project_id}/georef/status")

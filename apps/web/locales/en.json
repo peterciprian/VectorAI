@@ -76,10 +76,10 @@
     "introHint": "Select a point on the plan, then select its matching reference location.",
     "planPane": "Raw plan",
     "referencePane": "Reference map",
-    "referenceUpload": "Upload EOV GeoJSON",
+    "referenceUpload": "Upload EOV reference layer",
     "referenceUploaded": "Reference layer loaded",
     "referenceToggle": "Show uploaded reference",
-    "referenceFormat": "GeoJSON in EPSG:23700",
+    "referenceFormat": "GeoJSON or GeoTIFF in EPSG:23700",
     "gcps": "Ground control points",
     "emptyGcps": "Add at least three point pairs to continue.",
     "easting": "Easting (X)",
@@ -89,6 +89,11 @@
     "georefQueued": "Georeferencing queued",
     "georefComplete": "EOV raster ready",
     "rmse": "RMSE",
-    "georefError": "Georeferencing failed. Check the point pairs and try again."
+    "georefError": "Georeferencing failed. Check the point pairs and try again.",
+    "confirmGeoref": "Confirm and warp this GCP set",
+    "confirmGeorefText": "The selected points will be used to create the EOV raster.",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "warnings": "Warnings"
   }
 }

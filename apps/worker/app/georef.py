@@ -74,6 +74,12 @@ def georeference_raster(
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary_output = output.with_suffix(".tmp.tif")
     with rasterio.open(input_path) as source:
+        pixel_width, pixel_height = validate_gcps(gcps).values()
+        warnings: list[str] = []
+        if pixel_width < source.width * 0.25 or pixel_height < source.height * 0.25:
+            warnings.append("GCPs cover less than 25% of the source raster extent")
+        if max((item["residual_m"] for item in residuals), default=0) > 2:
+            warnings.append("At least one GCP residual exceeds 2 meters")
         source_bounds = rasterio.transform.array_bounds(source.height, source.width, transform)
         left, bottom, right, top = source_bounds
         destination_transform, destination_width, destination_height = calculate_default_transform(
@@ -131,6 +137,7 @@ def georeference_raster(
         "transform": [transform.a, transform.b, transform.c, transform.d, transform.e, transform.f],
         "rmse_m": rmse,
         "residuals": residuals,
+        "warnings": warnings,
         "output_path": str(output),
         "driver": "COG",
     }

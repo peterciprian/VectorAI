@@ -659,6 +659,41 @@ em {
   gap: 1rem;
   margin-top: 2rem;
 }
+.georef-warnings,
+.georef-confirm {
+  border-left: 3px solid var(--coral);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 1.5rem;
+  padding: 0.8rem 1rem;
+}
+.georef-warnings {
+  color: #8b4b3d;
+  font-size: 0.68rem;
+}
+.georef-warnings strong,
+.georef-confirm strong {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+.georef-confirm {
+  background: var(--night);
+  color: var(--paper);
+  max-width: 420px;
+}
+.georef-confirm p {
+  color: #a8b3a3;
+  font-size: 0.7rem;
+  line-height: 1.6;
+  margin: 0;
+}
+.georef-confirm div {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+}
 @media (max-width: 850px) {
   .hero {
     gap: 3rem;

@@ -76,10 +76,10 @@
     "introHint": "Válasszon egy pontot a terven, majd a referencia megfelelő helyét.",
     "planPane": "Nyers terv",
     "referencePane": "Referencia-térkép",
-    "referenceUpload": "EOV GeoJSON feltöltése",
+    "referenceUpload": "EOV referencia-réteg feltöltése",
     "referenceUploaded": "Referencia-réteg betöltve",
     "referenceToggle": "Feltöltött referencia megjelenítése",
-    "referenceFormat": "GeoJSON EPSG:23700-ban",
+    "referenceFormat": "GeoJSON vagy GeoTIFF EPSG:23700-ban",
     "gcps": "Illesztőpontok",
     "emptyGcps": "A folytatáshoz adjon meg legalább három pontpárt.",
     "easting": "Keleti koordináta (X)",
@@ -89,6 +89,11 @@
     "georefQueued": "A georeferálás várakozik",
     "georefComplete": "Az EOV-raszter elkészült",
     "rmse": "RMSE",
-    "georefError": "A georeferálás sikertelen. Ellenőrizze a pontpárokat, majd próbálja újra."
+    "georefError": "A georeferálás sikertelen. Ellenőrizze a pontpárokat, majd próbálja újra.",
+    "confirmGeoref": "Erősítse meg az illesztőpontokat",
+    "confirmGeorefText": "A kiválasztott pontok alapján készül el az EOV-raszter.",
+    "confirm": "Megerősítés",
+    "cancel": "Mégse",
+    "warnings": "Figyelmeztetések"
   }
 }

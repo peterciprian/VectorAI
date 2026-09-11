@@ -8,12 +8,14 @@ import View from 'ol/View';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import TileLayer from 'ol/layer/Tile';
+import BaseLayer from 'ol/layer/Base';
 import VectorLayer from 'ol/layer/Vector';
-import ImageLayer from 'ol/layer/Image';
 import VectorSource from 'ol/source/Vector';
 import OSM from 'ol/source/OSM';
-import Static from 'ol/source/ImageStatic';
+import XYZ from 'ol/source/XYZ';
 import GeoJSON from 'ol/format/GeoJSON';
+import GeoTIFF from 'ol/source/GeoTIFF';
+import TileGrid from 'ol/tilegrid/TileGrid';
 import Projection from 'ol/proj/Projection';
 import { fromLonLat, toLonLat, transform } from 'ol/proj';
 import Style from 'ol/style/Style';
@@ -41,6 +43,7 @@ type Gcp = {
 type IngestionMetadata = {
   width: number;
   height: number;
+  deepzoom_levels: number;
   thumbnail: string;
 };
 
@@ -55,12 +58,19 @@ export default function GeorefPage() {
   const pendingPixelRef = useRef<[number, number] | null>(null);
   const planMapRef = useRef<OlMap | null>(null);
   const referenceMapRef = useRef<OlMap | null>(null);
-  const referenceLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const referenceLayerRef = useRef<BaseLayer | null>(null);
+  const gcpCountRef = useRef(0);
   const planElement = useRef<HTMLDivElement>(null);
   const referenceElement = useRef<HTMLDivElement>(null);
   const [georefStatus, setGeorefStatus] = useState<'idle' | 'queued' | 'completed' | 'error'>('idle');
   const [rmse, setRmse] = useState<number | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
   const content = getTranslations(locale);
+
+  useEffect(() => {
+    gcpCountRef.current = gcps.length;
+  }, [gcps.length]);
 
   useEffect(() => {
     const savedLocale = window.localStorage.getItem('vectoryai-locale');
@@ -85,7 +95,19 @@ export default function GeorefPage() {
     const planMap = new OlMap({
       target: planElement.current,
       layers: [
-        new ImageLayer({ source: new Static({ url: `${apiBase}/api/v1/projects/${projectId}/thumbnail`, imageExtent: [0, 0, metadata.width, metadata.height], projection: planProjection }) }),
+        new TileLayer({ source: new XYZ({
+          tileGrid: new TileGrid({
+            extent: [0, 0, metadata.width, metadata.height],
+            origin: [0, metadata.height],
+            tileSize: 512,
+            resolutions: Array.from({ length: Math.max(metadata.deepzoom_levels, 1) }, (_, zoom) => Math.max(metadata.width, metadata.height) / 512 / (2 ** zoom)),
+          }),
+          tileUrlFunction: (tileCoordinate) => {
+            if (!tileCoordinate) return '';
+            const level = metadata.deepzoom_levels - 1 - tileCoordinate[0];
+            return `${apiBase}/api/v1/projects/${projectId}/deepzoom/${level}/${tileCoordinate[1]}_${tileCoordinate[2]}.jpg`;
+          },
+        }) }),
         new VectorLayer({ source: planSource, style: pointStyle }),
       ],
       view: new View({ projection: planProjection, center: [metadata.width / 2, metadata.height / 2], zoom: 1, extent: [0, 0, metadata.width, metadata.height] }),
@@ -104,7 +126,7 @@ export default function GeorefPage() {
       referenceMapRef.current = null;
       referenceLayerRef.current = null;
     };
-  }, [metadata, projectId, gcps.length]);
+  }, [metadata, projectId]);
 
   useEffect(() => {
     if (georefStatus !== 'queued' || !projectId) return;
@@ -114,6 +136,7 @@ export default function GeorefPage() {
         .then((result) => {
           if (result.status === 'completed') {
             setRmse(result.rmse_m);
+            setWarnings(result.warnings || []);
             setGeorefStatus('completed');
           }
         })
@@ -134,6 +157,7 @@ export default function GeorefPage() {
       body: JSON.stringify({ transform_method: 'affine', target_crs: 'EPSG:23700', points: gcps }),
     }).then((response) => {
       if (!response.ok) throw new Error('Georeferencing request failed');
+      setConfirmSubmit(false);
       setGeorefStatus('queued');
     }).catch(() => setGeorefStatus('error'));
   }
@@ -146,12 +170,10 @@ export default function GeorefPage() {
     formData.append('crs', 'EPSG:23700');
     const response = await fetch(`${apiBase}/api/v1/projects/${projectId}/georef/reference`, { method: 'POST', body: formData });
     if (!response.ok) return;
-    const result = await response.json() as { reference_id: string; filename: string; url: string };
-    const geoJson = await fetch(`${apiBase}${result.url}`).then((referenceResponse) => referenceResponse.json());
-    const referenceSource = new VectorSource({
-      features: new GeoJSON().readFeatures(geoJson, { dataProjection: 'EPSG:23700', featureProjection: 'EPSG:3857' }),
-    });
-    const referenceLayer = new VectorLayer({ source: referenceSource, style: new Style({ stroke: new Stroke({ color: '#e36d50', width: 3 }), fill: new Fill({ color: 'rgba(227, 109, 80, 0.12)' }) }) });
+    const result = await response.json() as { reference_id: string; filename: string; format: string; url: string };
+    const referenceLayer = result.format === 'tif' || result.format === 'tiff'
+      ? new TileLayer({ source: new GeoTIFF({ sources: [{ url: `${apiBase}${result.url}` }], projection: 'EPSG:23700' }) })
+      : new VectorLayer({ source: new VectorSource({ features: new GeoJSON().readFeatures(await fetch(`${apiBase}${result.url}`).then((referenceResponse) => referenceResponse.json()), { dataProjection: 'EPSG:23700', featureProjection: 'EPSG:3857' }) }), style: new Style({ stroke: new Stroke({ color: '#e36d50', width: 3 }), fill: new Fill({ color: 'rgba(227, 109, 80, 0.12)' }) }) });
     referenceMapRef.current.addLayer(referenceLayer);
     referenceLayerRef.current = referenceLayer;
     setReferenceLayerName(result.filename);
@@ -188,7 +210,7 @@ export default function GeorefPage() {
     const [longitude, latitude] = toLonLat(coordinate);
     const [mapX, mapY] = transform([longitude, latitude], 'EPSG:4326', 'EPSG:23700');
     const pixel = pendingPixelRef.current;
-    const id = `gcp_${gcps.length + 1}`;
+    const id = `gcp_${gcpCountRef.current + 1}`;
     setGcps((current) => [...current, { id, pixel_x: pixel[0], pixel_y: pixel[1], map_x: mapX, map_y: mapY }]);
     pendingPixelRef.current = null;
     setPendingPixel(null);
@@ -207,10 +229,12 @@ export default function GeorefPage() {
         <div className="georef-heading"><p className="eyebrow"><span className="eyebrow-dot" /> {content.upload.label}</p><h1>{content.upload.georefTitle}<br /><em>{content.upload.georefTitleEmphasis}</em></h1><p className="lede">{content.upload.georefIntro}</p></div>
         {!metadata && <p className="upload-error">{projectId ? content.upload.apiUnavailable : content.upload.georefError}</p>}
         {metadata && <>
-          <div className="map-panes"><div><p className="section-kicker">{content.upload.planPane}</p><div ref={planElement} className="map-pane" onClick={handlePlanClick} /></div><div><p className="section-kicker">{content.upload.referencePane}</p><div ref={referenceElement} className="map-pane" onClick={handleReferenceClick} /><label className="reference-upload"><span>{referenceLayerName || content.upload.referenceUpload}</span><input type="file" accept=".geojson,.json" onChange={handleReferenceUpload} /></label>{referenceLayerName && <label className="reference-toggle"><input type="checkbox" checked={referenceLayerVisible} onChange={(event) => toggleReferenceLayer(event.target.checked)} /> {content.upload.referenceToggle}</label>}<p className="upload-hint">{content.upload.referenceFormat}</p></div></div>
+          <div className="map-panes"><div><p className="section-kicker">{content.upload.planPane}</p><div ref={planElement} className="map-pane" onClick={handlePlanClick} /></div><div><p className="section-kicker">{content.upload.referencePane}</p><div ref={referenceElement} className="map-pane" onClick={handleReferenceClick} /><label className="reference-upload"><span>{referenceLayerName || content.upload.referenceUpload}</span><input type="file" accept=".geojson,.json,.tif,.tiff" onChange={handleReferenceUpload} /></label>{referenceLayerName && <label className="reference-toggle"><input type="checkbox" checked={referenceLayerVisible} onChange={(event) => toggleReferenceLayer(event.target.checked)} /> {content.upload.referenceToggle}</label>}<p className="upload-hint">{content.upload.referenceFormat}</p></div></div>
           <p className="upload-hint">{pendingPixel ? `${content.upload.gcps}: ${Math.round(pendingPixel[0])}, ${Math.round(pendingPixel[1])}` : content.upload.introHint}</p>
           <section className="gcp-panel"><h2>{content.upload.gcps}</h2>{gcps.length === 0 && <p className="upload-hint">{content.upload.emptyGcps}</p>}{gcps.map((gcp, index) => <div className="gcp-row" key={gcp.id}><span>{gcp.id}</span><input aria-label={`${content.upload.easting} ${gcp.id}`} type="number" value={gcp.map_x} onChange={(event) => updateGcp(index, 'map_x', Number(event.target.value))} /><input aria-label={`${content.upload.northing} ${gcp.id}`} type="number" value={gcp.map_y} onChange={(event) => updateGcp(index, 'map_y', Number(event.target.value))} /><button type="button" onClick={() => setGcps((current) => current.filter((_, currentIndex) => currentIndex !== index))}>{content.upload.remove}</button></div>)}</section>
-          <div className="georef-actions"><button className="button button-primary" type="button" disabled={gcps.length < 3 || georefStatus === 'queued'} onClick={submitGeoreferencing}>{content.upload.submitGeoref} <span aria-hidden="true">&#8599;</span></button>{georefStatus === 'queued' && <span className="upload-hint">{content.upload.georefQueued}</span>}{georefStatus === 'completed' && <span className="upload-success">{content.upload.georefComplete}: {content.upload.rmse} {rmse?.toFixed(3)} m</span>}{georefStatus === 'error' && <span className="upload-error">{content.upload.georefError}</span>}</div>
+          <div className="georef-actions"><button className="button button-primary" type="button" disabled={gcps.length < 3 || georefStatus === 'queued'} onClick={() => setConfirmSubmit(true)}>{content.upload.submitGeoref} <span aria-hidden="true">&#8599;</span></button>{georefStatus === 'queued' && <span className="upload-hint">{content.upload.georefQueued}</span>}{georefStatus === 'completed' && <span className="upload-success">{content.upload.georefComplete}: {content.upload.rmse} {rmse?.toFixed(3)} m</span>}{georefStatus === 'error' && <span className="upload-error">{content.upload.georefError}</span>}</div>
+          {warnings.length > 0 && <div className="georef-warnings"><strong>{content.upload.warnings}</strong>{warnings.map((warning) => <span key={warning}>{warning}</span>)}</div>}
+          {confirmSubmit && <div className="georef-confirm"><strong>{content.upload.confirmGeoref}</strong><p>{content.upload.confirmGeorefText}</p><div><button className="button button-primary" type="button" onClick={submitGeoreferencing}>{content.upload.confirm}</button><button className="text-link" type="button" onClick={() => setConfirmSubmit(false)}>{content.upload.cancel}</button></div></div>}
         </>}
       </section>
     </main>
