@@ -77,11 +77,13 @@ This file records known gaps and limitations identified while implementing PBIs.
 
 - [x] Implement initial line skeletonization, morphological gap bridging, smoothing, and strict LineString GeoJSON output.
 - [x] Implement initial graph-based endpoint/junction tracing, short-spur pruning, and path chaining.
-- [ ] Complete and validate the branched-line graph fixture test after the fresh NetworkX worker image finishes building.
-- [ ] Implement point-symbol detection and centroid extraction.
+- [x] Complete and validate the branched-line graph fixture test in the rebuilt NetworkX worker image.
+- [x] Implement color-mask connected-component point-symbol detection and centroid extraction.
 - [x] Enforce the initial strict LineString output contract.
 - [x] Add an initial LineString fixture and output test.
+- [x] Add an initial Point fixture with strict geometry and symbol metadata assertions.
 - [ ] Add real municipal line fixtures and geometry-specific accuracy tests.
+- [ ] Add real municipal point-symbol fixtures, template/model detection, and accuracy tests.
 
 ## PBI-10/PBI-11/PBI-15: Export, Layers, Editing
 

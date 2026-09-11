@@ -287,10 +287,10 @@ flowchart TD
     end
 
     subgraph PointPipeline ["Point Extraction"]
-        B -- Point Class --> T1[YOLOv8 Object Detector / Template Matcher]
-        T1 --> T2[Extract Bounding Box Centroids]
+      B -- Point Class --> T1[Lab Color Mask & Connected Components]
+      T1 --> T2[Extract Component Centroids]
         T2 --> T3[Pixel-to-EOV Coordinate Transform]
-        T3 --> T4[Shapely Point Feature Construction]
+      T3 --> T4[Shapely Point Features with Symbol Metadata]
     end
 
     P6 --> Out[Layer GeoDataFrame]

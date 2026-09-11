@@ -9,6 +9,7 @@ from .georef import georeference_raster, write_georef_metadata
 from .legend import parse_legend
 from .vectorizer import polygonize_class
 from .line_vectorizer import vectorize_line_class
+from .point_vectorizer import vectorize_point_class
 
 
 async def _persist_legend_registry(project_id: str, registry: dict[str, object]) -> None:
@@ -104,3 +105,8 @@ def vectorize_polygon_task(project_id: str, legend_item: dict[str, object], stor
 @celery_app.task(name="vectoryai.vectorize_line")
 def vectorize_line_task(project_id: str, legend_item: dict[str, object], storage_root: str) -> dict[str, object]:
     return vectorize_line_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
+
+
+@celery_app.task(name="vectoryai.vectorize_point")
+def vectorize_point_task(project_id: str, legend_item: dict[str, object], storage_root: str) -> dict[str, object]:
+    return vectorize_point_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)

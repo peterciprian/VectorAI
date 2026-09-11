@@ -6,7 +6,6 @@ from typing import Any
 
 import cv2
 import numpy as np
-import rasterio
 from affine import Affine
 from shapely.geometry import LineString
 from shapely.validation import explain_validity
@@ -29,9 +28,9 @@ def _line_mask(image: np.ndarray, color_rgb: list[int], tolerance: int) -> np.nd
 def _pixel_line_transform(project_directory: Path) -> Affine:
     return _pixel_transform(project_directory)
 
+
 def _skeleton_graph(skeleton: np.ndarray) -> nx.Graph:
     graph = nx.Graph()
-    height, width = skeleton.shape
     pixels = [tuple(int(value) for value in point) for point in np.argwhere(skeleton)]
     pixel_set = set(pixels)
     for row, column in pixels:
@@ -81,6 +80,8 @@ def _trace_paths(graph: nx.Graph, min_pixels: int = 8) -> list[list[tuple[int, i
             paths.append(path)
     return paths
 
+
+def vectorize_line_class(
     project_id: str,
     storage_root: str,
     legend_item: dict[str, Any],
@@ -95,15 +96,14 @@ def _trace_paths(graph: nx.Graph, min_pixels: int = 8) -> list[list[tuple[int, i
     image = cv2.cvtColor(cv2.imread(str(raster_path), cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
     mask = _line_mask(image, legend_item.get("color_rgb", [0, 0, 0]), int(legend_item.get("color_tolerance", 18)))
     skeleton = skeletonize(mask > 0)
-    skeleton = skeletonize(_line_mask(image, legend_item.get("color_rgb", [0, 0, 0]), int(legend_item.get("color_tolerance", 18))) > 0)
     graph = _skeleton_graph(skeleton)
     paths = _trace_paths(graph)
-    contours, _ = cv2.findContours(skeleton.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-    for contour in contours:
-        if len(contour) < 2:
+    transform = _pixel_line_transform(project_directory)
+    features: list[dict[str, Any]] = []
+    for path in paths:
+        if len(path) < 2:
             continue
-        pixel_coordinates = contour[:, 0, :].astype(float)
-        map_coordinates = [transform * (float(x), float(y)) for x, y in pixel_coordinates]
+        map_coordinates = [transform * (float(column), float(row)) for row, column in path]
         line = LineString(map_coordinates).simplify(simplify_meters, preserve_topology=False)
         if line.is_empty or line.geom_type != "LineString" or line.length <= 0:
             continue

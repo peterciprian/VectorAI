@@ -50,6 +50,8 @@ class LegendItem(BaseModel):
     id: str
     code: str
     name: str
+    symbol_type: str | None = None
+    label: str | None = None
     geometry_type: str
     color_rgb: list[int] = Field(min_length=3, max_length=3)
     color_tolerance: int = Field(ge=0, le=100)
@@ -386,13 +388,17 @@ def update_legend(project_id: str, request: LegendUpdateRequest) -> dict[str, ob
 
 @app.post("/api/v1/projects/{project_id}/vectorize", status_code=202)
 def start_polygon_vectorization(project_id: str, request: PolygonVectorizeRequest) -> dict[str, object]:
-    if request.legend_item.geometry_type != "Polygon":
-        if request.legend_item.geometry_type != "LineString":
-            raise HTTPException(status_code=422, detail="The vectorizer accepts Polygon or LineString legend items")
+    if request.legend_item.geometry_type not in {"Polygon", "LineString", "Point"}:
+        raise HTTPException(status_code=422, detail="The vectorizer accepts Polygon, LineString, or Point legend items")
     raster_path = storage_root / project_id / "raster" / "master.jpg"
     if not raster_path.exists():
         raise HTTPException(status_code=404, detail="Ingested master raster is not ready")
-    task_name = "vectoryai.vectorize_polygon" if request.legend_item.geometry_type == "Polygon" else "vectoryai.vectorize_line"
+    task_name_by_geometry = {
+        "Polygon": "vectoryai.vectorize_polygon",
+        "LineString": "vectoryai.vectorize_line",
+        "Point": "vectoryai.vectorize_point",
+    }
+    task_name = task_name_by_geometry[request.legend_item.geometry_type]
     job = celery_client.send_task(
         task_name,
         args=[project_id, request.legend_item.model_dump(), str(storage_root)],

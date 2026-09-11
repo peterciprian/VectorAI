@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw
 
 from app.vectorizer import polygonize_class
 from app.line_vectorizer import vectorize_line_class
+from app.point_vectorizer import vectorize_point_class
 
 
 class VectorizerTests(unittest.TestCase):
@@ -66,6 +67,35 @@ class VectorizerTests(unittest.TestCase):
 
             result = vectorize_line_class("project", str(root), item)
             self.assertGreaterEqual(result["feature_count"], 2)
+
+    def test_point_class_writes_centroids_with_symbol_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            project = root / "project"
+            raster = project / "raster"
+            raster.mkdir(parents=True)
+            image = Image.new("RGB", (120, 120), "white")
+            draw = ImageDraw.Draw(image)
+            draw.ellipse((18, 28, 26, 36), fill=(35, 95, 190))
+            draw.ellipse((82, 78, 90, 86), fill=(35, 95, 190))
+            image.save(raster / "master.jpg")
+            item = {
+                "id": "leg_point_01",
+                "code": "FA",
+                "name": "Vedett fa",
+                "symbol_type": "protected_tree",
+                "geometry_type": "Point",
+                "color_rgb": [35, 95, 190],
+                "color_tolerance": 20,
+            }
+
+            result = vectorize_point_class("project", str(root), item)
+            collection = json.loads((project / "layers" / "leg_point_01.geojson").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["feature_count"], 2)
+            self.assertTrue(all(feature["geometry"]["type"] == "Point" for feature in collection["features"]))
+            self.assertTrue(all(feature["properties"]["symbol_type"] == "protected_tree" for feature in collection["features"]))
+            self.assertTrue(all(feature["properties"]["label"] == "Vedett fa" for feature in collection["features"]))
 
 
 if __name__ == "__main__":
