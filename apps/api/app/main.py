@@ -59,6 +59,12 @@ class LegendItem(BaseModel):
     label: str | None = None
     template_path: str | None = None
     template_threshold: float = Field(ge=0, le=1, default=0.75)
+    inpaint_text: bool = True
+    text_mask_dilation: int = Field(ge=0, le=20, default=3)
+    inpaint_radius: int = Field(ge=1, le=20, default=3)
+    ocr_min_confidence: float = Field(ge=0, le=100, default=35)
+    text_exclusion_zones: list[list[int]] = Field(default_factory=list)
+    text_border_margin: int = Field(ge=0, le=1000, default=0)
     geometry_type: str
     color_rgb: list[int] = Field(min_length=3, max_length=3)
     color_tolerance: int = Field(ge=0, le=100)

@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -9,7 +10,7 @@ from PIL import Image, ImageDraw
 from app.vectorizer import polygonize_class
 from app.line_vectorizer import vectorize_line_class
 from app.point_vectorizer import vectorize_point_class
-from app.inpaint import inpaint_text_regions
+from app.inpaint import inpaint_text_regions, text_boxes
 
 
 class VectorizerTests(unittest.TestCase):
@@ -35,11 +36,25 @@ class VectorizerTests(unittest.TestCase):
         image = np.full((40, 40, 3), [40, 160, 80], dtype=np.uint8)
         image[15:25, 15:25] = [0, 0, 0]
 
-        cleaned, mask, boxes = inpaint_text_regions(image, boxes=[(15, 15, 10, 10)], dilation=0, radius=3)
+        cleaned, mask, boxes = inpaint_text_regions(image, boxes=[(15, 15, 10, 10, 99)], dilation=0, radius=3)
 
-        self.assertEqual(boxes, [(15, 15, 10, 10)])
+        self.assertEqual(boxes, [(15, 15, 10, 10, 99)])
         self.assertGreater(int(mask.sum()), 0)
         self.assertLess(float(np.linalg.norm(cleaned[20, 20].astype(float) - np.array([40, 160, 80]))), 80)
+
+    def test_text_boxes_filter_confidence_and_exclusion_zones(self) -> None:
+        image = np.full((100, 100, 3), 255, dtype=np.uint8)
+        data = {"left": [10, 40], "top": [10, 40], "width": [10, 10], "height": [10, 10], "conf": [20, 90], "text": ["low", "legend"]}
+        with patch("app.inpaint.pytesseract.image_to_data", return_value=data):
+            boxes = text_boxes(image, min_confidence=35, exclusion_zones=[[35, 35, 60, 60]])
+        self.assertEqual(boxes, [])
+
+    def test_non_polygon_inpainting_is_bypassed(self) -> None:
+        image = np.zeros((10, 10, 3), dtype=np.uint8)
+        cleaned, mask, boxes = inpaint_text_regions(image, geometry_type="LineString")
+        self.assertEqual(int(mask.sum()), 0)
+        self.assertEqual(boxes, [])
+        self.assertTrue(np.array_equal(cleaned, image))
 
     def test_non_polygon_class_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

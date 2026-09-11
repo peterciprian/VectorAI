@@ -66,6 +66,9 @@ This file records known gaps and limitations identified while implementing PBIs.
 - [ ] Add multi-window/vectorization tests on large raster inputs.
 - [x] Integrate OCR text masking/inpainting from PBI-13 before polygonization.
 - [x] Add deterministic OCR-mask/inpainting fixture coverage.
+- [x] Add OCR confidence filtering and configurable text exclusion zones.
+- [x] Keep inpainting geometry-aware so LineString and Point workflows are untouched.
+- [x] Report color-mask IoU before and after polygon inpainting.
 - [ ] Improve segmentation with full HSV/Lab tolerance controls and class-specific signatures.
 - [ ] Handle disconnected regions, holes, and multipart polygons explicitly.
 - [ ] Add polygon area/shape quality thresholds based on EOV units.

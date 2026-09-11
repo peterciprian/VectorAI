@@ -15,6 +15,13 @@ from shapely.validation import explain_validity
 from .inpaint import inpaint_text_regions
 
 
+def _mask_iou(first: np.ndarray, second: np.ndarray) -> float:
+    first_mask = first > 0
+    second_mask = second > 0
+    union = np.logical_or(first_mask, second_mask).sum()
+    return float(np.logical_and(first_mask, second_mask).sum() / union) if union else 1.0
+
+
 def _pixel_transform(project_directory: Path) -> Affine:
     metadata_path = project_directory / "georef" / "metadata.json"
     if not metadata_path.exists():
@@ -49,11 +56,16 @@ def polygonize_class(
     if not raster_path.exists():
         raise FileNotFoundError("Ingested master raster is not ready")
     image = cv2.cvtColor(cv2.imread(str(raster_path), cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+    original_mask = _color_mask(image, legend_item.get("color_rgb", [0, 0, 0]), int(legend_item.get("color_tolerance", 18)))
     if legend_item.get("inpaint_text", True):
         image, _, _ = inpaint_text_regions(
             image,
             dilation=int(legend_item.get("text_mask_dilation", 3)),
             radius=int(legend_item.get("inpaint_radius", 3)),
+            min_confidence=float(legend_item.get("ocr_min_confidence", 35)),
+            exclusion_zones=legend_item.get("text_exclusion_zones"),
+            border_margin=int(legend_item.get("text_border_margin", 0)),
+            geometry_type="Polygon",
         )
     mask = _color_mask(image, legend_item.get("color_rgb", [0, 0, 0]), int(legend_item.get("color_tolerance", 18)))
     transform = _pixel_transform(project_directory)
@@ -87,4 +99,4 @@ def polygonize_class(
     output_path = layer_directory / f"{layer_id}.geojson"
     collection = {"type": "FeatureCollection", "features": features, "crs": {"type": "name", "properties": {"name": "EPSG:23700"}}}
     output_path.write_text(json.dumps(collection, ensure_ascii=False), encoding="utf-8")
-    return {"project_id": project_id, "layer_id": layer_id, "geometry_type": "Polygon", "feature_count": len(features), "geojson_path": str(output_path)}
+    return {"project_id": project_id, "layer_id": layer_id, "geometry_type": "Polygon", "feature_count": len(features), "geojson_path": str(output_path), "mask_iou_before_after_inpainting": _mask_iou(original_mask, mask)}
