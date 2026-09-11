@@ -66,6 +66,8 @@ graph TB
     SSE_Broadcaster --> SSE_Client
 ```
 
+  Processing jobs are persisted in `processing_jobs`. Workers publish lifecycle events to the project Redis channel `vectoryai:project:{project_id}:jobs`; the API exposes the channel through `GET /api/v1/projects/{id}/events` and individual lifecycle state through `GET /api/v1/jobs/{job_id}`.
+
 ---
 
 ## 2. Technology Stack & Component Specifications
@@ -433,6 +435,8 @@ sequenceDiagram
 | `GET` | `/api/v1/projects/{id}/legend` | *None* | `200 OK` `{ items: LegendItem[] }` | Fetches detected legend catalog. |
 | `PUT` | `/api/v1/projects/{id}/legend` | `{ items: LegendItem[] }` | `200 OK` `{ updated_count }` | Updates user-edited legend classes. |
 | `POST` | `/api/v1/projects/{id}/vectorize` | `VectorizeConfig` | `202 Accepted` `{ job_id }` | Starts multi-layer vectorization. |
+| `GET` | `/api/v1/jobs/{job_id}` | *None* | `200 OK` `{ status, stage, progress_percent }` | Returns persistent processing-job state. |
+| `GET` | `/api/v1/projects/{id}/events` | *None* | `200 OK (text/event-stream)` | Streams project job lifecycle and stage events. |
 | `GET` | `/api/v1/projects/{id}/layers` | *None* | `200 OK` `{ layers: VectorLayerSummary[] }` | Returns layer catalog & GeoJSON URLs. |
 | `GET` | `/api/v1/projects/{id}/layers/{layer_id}/geojson` | *None* | `200 OK` `FeatureCollection (GeoJSON)` | Streams layer GeoJSON to OpenLayers. |
 | `PUT` | `/api/v1/projects/{id}/layers/{layer_id}/features` | `FeatureCollection` | `200 OK` `{ updated_features: number }` | Saves manual edits made in OpenLayers. |

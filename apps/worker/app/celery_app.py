@@ -1,5 +1,6 @@
 import os
 import asyncio
+import asyncpg
 
 from celery import Celery
 
@@ -10,6 +11,7 @@ from .vectorizer import polygonize_class
 from .line_vectorizer import vectorize_line_class
 from .point_vectorizer import vectorize_point_class
 from .persistence import persist_vector_features
+from .jobs import update_job_sync
 
 
 async def _persist_legend_registry(project_id: str, registry: dict[str, object]) -> None:
@@ -63,56 +65,85 @@ def ingest_document_task(
     source_path: str,
     page_number: int = 0,
     source_filename: str | None = None,
+    job_id: str | None = None,
 ) -> dict[str, object]:
-    return ingest_document(
-        project_id=project_id,
-        source_path=source_path,
-        storage_root=os.getenv("STORAGE_ROOT", "/storage/projects"),
-        page_number=page_number,
-        source_filename=source_filename,
-    )
+    update_job_sync(job_id, project_id, "running", "ingestion", 10)
+    try:
+        result = ingest_document(project_id=project_id, source_path=source_path, storage_root=os.getenv("STORAGE_ROOT", "/storage/projects"), page_number=page_number, source_filename=source_filename)
+        update_job_sync(job_id, project_id, "completed", "ingestion", 100)
+        return result
+    except Exception as error:
+        update_job_sync(job_id, project_id, "failed", "ingestion", 100, str(error))
+        raise
 
 
 @celery_app.task(name="vectoryai.warp_georef")
-def warp_georef_task(project_id: str, gcps: list[dict[str, object]], storage_root: str, method: str = "auto") -> dict[str, object]:
+def warp_georef_task(project_id: str, gcps: list[dict[str, object]], storage_root: str, method: str = "auto", job_id: str | None = None) -> dict[str, object]:
     project_directory = os.path.join(storage_root, project_id)
     input_path = os.path.join(project_directory, "raster", "master.jpg")
     output_path = os.path.join(project_directory, "georef", "warped_eov.tif")
     metadata_path = os.path.join(project_directory, "georef", "metadata.json")
+    update_job_sync(job_id, project_id, "running", "georeferencing", 10)
     try:
         metadata = georeference_raster(input_path, output_path, gcps, method=method)
         metadata["project_id"] = project_id
         metadata["status"] = "completed"
         write_georef_metadata(metadata_path, metadata)
+        update_job_sync(job_id, project_id, "completed", "georeferencing", 100)
         return metadata
     except Exception as error:
         write_georef_metadata(metadata_path, {"project_id": project_id, "status": "failed", "error": str(error)})
+        update_job_sync(job_id, project_id, "failed", "georeferencing", 100, str(error))
         raise
 
 
 @celery_app.task(name="vectoryai.parse_legend")
-def parse_legend_task(project_id: str, source_path: str, storage_root: str, bbox: list[int] | None = None) -> dict[str, object]:
-    registry = parse_legend(project_id=project_id, source_path=source_path, storage_root=storage_root, bbox=bbox)
-    asyncio.run(_persist_legend_registry(project_id, registry))
-    return registry
+def parse_legend_task(project_id: str, source_path: str, storage_root: str, bbox: list[int] | None = None, job_id: str | None = None) -> dict[str, object]:
+    update_job_sync(job_id, project_id, "running", "ocr", 10)
+    try:
+        registry = parse_legend(project_id=project_id, source_path=source_path, storage_root=storage_root, bbox=bbox)
+        asyncio.run(_persist_legend_registry(project_id, registry))
+        update_job_sync(job_id, project_id, "completed", "ocr", 100)
+        return registry
+    except Exception as error:
+        update_job_sync(job_id, project_id, "failed", "ocr", 100, str(error))
+        raise
 
 
 @celery_app.task(name="vectoryai.vectorize_polygon")
-def vectorize_polygon_task(project_id: str, legend_item: dict[str, object], storage_root: str) -> dict[str, object]:
-    result = polygonize_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
-    result["persisted_feature_count"] = asyncio.run(persist_vector_features(project_id, result, storage_root))
-    return result
+def vectorize_polygon_task(project_id: str, legend_item: dict[str, object], storage_root: str, job_id: str | None = None) -> dict[str, object]:
+    update_job_sync(job_id, project_id, "running", "segmentation", 10)
+    try:
+        result = polygonize_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
+        result["persisted_feature_count"] = asyncio.run(persist_vector_features(project_id, result, storage_root))
+        update_job_sync(job_id, project_id, "completed", "vectorization", 100)
+        return result
+    except Exception as error:
+        update_job_sync(job_id, project_id, "failed", "vectorization", 100, str(error))
+        raise
 
 
 @celery_app.task(name="vectoryai.vectorize_line")
-def vectorize_line_task(project_id: str, legend_item: dict[str, object], storage_root: str) -> dict[str, object]:
-    result = vectorize_line_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
-    result["persisted_feature_count"] = asyncio.run(persist_vector_features(project_id, result, storage_root))
-    return result
+def vectorize_line_task(project_id: str, legend_item: dict[str, object], storage_root: str, job_id: str | None = None) -> dict[str, object]:
+    update_job_sync(job_id, project_id, "running", "vectorization", 10)
+    try:
+        result = vectorize_line_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
+        result["persisted_feature_count"] = asyncio.run(persist_vector_features(project_id, result, storage_root))
+        update_job_sync(job_id, project_id, "completed", "vectorization", 100)
+        return result
+    except Exception as error:
+        update_job_sync(job_id, project_id, "failed", "vectorization", 100, str(error))
+        raise
 
 
 @celery_app.task(name="vectoryai.vectorize_point")
-def vectorize_point_task(project_id: str, legend_item: dict[str, object], storage_root: str) -> dict[str, object]:
-    result = vectorize_point_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
-    result["persisted_feature_count"] = asyncio.run(persist_vector_features(project_id, result, storage_root))
-    return result
+def vectorize_point_task(project_id: str, legend_item: dict[str, object], storage_root: str, job_id: str | None = None) -> dict[str, object]:
+    update_job_sync(job_id, project_id, "running", "vectorization", 10)
+    try:
+        result = vectorize_point_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
+        result["persisted_feature_count"] = asyncio.run(persist_vector_features(project_id, result, storage_root))
+        update_job_sync(job_id, project_id, "completed", "vectorization", 100)
+        return result
+    except Exception as error:
+        update_job_sync(job_id, project_id, "failed", "vectorization", 100, str(error))
+        raise

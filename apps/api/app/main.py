@@ -11,12 +11,13 @@ from celery import Celery
 import fitz
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from PIL import Image
 from pydantic import BaseModel, Field
 
 from .exporter import export_project_shapefiles
 from .topology import clean_project_topology, validate_project_topology
+from .jobs import create_job, get_job, project_events, serializable_job
 from shapely.geometry import shape
 
 cors_origins = [
@@ -125,6 +126,19 @@ def _database_url() -> str | None:
     return value.replace("postgresql+asyncpg://", "postgresql://") if value else None
 
 
+def _queue_job(project_id: str, task_name: str, args: list[object], job_type: str) -> str:
+    job_id = str(uuid4())
+    try:
+        asyncio.run(create_job(project_id, job_id, job_type))
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Job persistence is unavailable") from error
+    try:
+        celery_client.send_task(task_name, args=[*args, job_id], task_id=job_id)
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="The processing queue is unavailable") from error
+    return job_id
+
+
 async def _persist_gcps(project_id: str, request: GeoreferenceRequest, selected_method: str) -> None:
     database_url = _database_url()
     if not database_url:
@@ -216,10 +230,7 @@ async def upload_project(
 
     try:
         page_count = _validate_source(source_path, suffix, page_number)
-        job = celery_client.send_task(
-            "vectoryai.ingest_document",
-            args=[project_id, str(source_path), page_number, original_name],
-        )
+        job_id = _queue_job(project_id, "vectoryai.ingest_document", [project_id, str(source_path), page_number, original_name], "ingestion")
     except HTTPException:
         source_path.unlink(missing_ok=True)
         shutil.rmtree(project_directory.parent, ignore_errors=True)
@@ -230,7 +241,7 @@ async def upload_project(
         raise HTTPException(status_code=503, detail="The ingestion queue is unavailable") from error
     return {
         "project_id": project_id,
-        "job_id": job.id,
+        "job_id": job_id,
         "status": "queued",
         "page_number": page_number,
         "page_count": page_count,
@@ -280,11 +291,8 @@ def start_georeferencing(project_id: str, request: GeoreferenceRequest) -> dict[
         asyncio.run(_persist_gcps(project_id, request, selected_method))
     except Exception as error:
         raise HTTPException(status_code=503, detail="GCP persistence is unavailable") from error
-    job = celery_client.send_task(
-        "vectoryai.warp_georef",
-        args=[project_id, [point.model_dump() for point in request.points], str(storage_root), selected_method],
-    )
-    return {"project_id": project_id, "job_id": job.id, "status": "queued", "target_crs": request.target_crs, "transform_method": selected_method}
+    job_id = _queue_job(project_id, "vectoryai.warp_georef", [project_id, [point.model_dump() for point in request.points], str(storage_root), selected_method], "georeferencing")
+    return {"project_id": project_id, "job_id": job_id, "status": "queued", "target_crs": request.target_crs, "transform_method": selected_method}
 
 
 @app.post("/api/v1/projects/{project_id}/georef/reference", status_code=201)
@@ -360,11 +368,8 @@ def start_legend_detection(project_id: str, request: LegendDetectRequest) -> dic
         raise HTTPException(status_code=404, detail="Ingested master raster is not ready")
     if request.bbox and (len(request.bbox) != 4 or request.bbox[0] < 0 or request.bbox[1] < 0 or request.bbox[2] <= request.bbox[0] or request.bbox[3] <= request.bbox[1]):
         raise HTTPException(status_code=422, detail="bbox must be [xmin, ymin, xmax, ymax]")
-    job = celery_client.send_task(
-        "vectoryai.parse_legend",
-        args=[project_id, str(source_path), str(storage_root), request.bbox],
-    )
-    return {"project_id": project_id, "job_id": job.id, "status": "queued"}
+    job_id = _queue_job(project_id, "vectoryai.parse_legend", [project_id, str(source_path), str(storage_root), request.bbox], "legend")
+    return {"project_id": project_id, "job_id": job_id, "status": "queued"}
 
 
 @app.get("/api/v1/projects/{project_id}/legend")
@@ -410,11 +415,21 @@ def start_polygon_vectorization(project_id: str, request: PolygonVectorizeReques
         "Point": "vectoryai.vectorize_point",
     }
     task_name = task_name_by_geometry[request.legend_item.geometry_type]
-    job = celery_client.send_task(
-        task_name,
-        args=[project_id, request.legend_item.model_dump(), str(storage_root)],
-    )
-    return {"project_id": project_id, "job_id": job.id, "status": "queued", "layer_id": request.legend_item.id}
+    job_id = _queue_job(project_id, task_name, [project_id, request.legend_item.model_dump(), str(storage_root)], request.legend_item.geometry_type.lower())
+    return {"project_id": project_id, "job_id": job_id, "status": "queued", "layer_id": request.legend_item.id}
+
+
+@app.get("/api/v1/jobs/{job_id}")
+async def processing_job_status(job_id: str) -> dict[str, object]:
+    job = await get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return serializable_job(job)
+
+
+@app.get("/api/v1/projects/{project_id}/events")
+async def processing_events(project_id: str) -> StreamingResponse:
+    return StreamingResponse(project_events(project_id), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @app.get("/api/v1/projects/{project_id}/layers/{layer_id}/geojson")

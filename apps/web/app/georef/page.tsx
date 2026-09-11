@@ -85,12 +85,26 @@ export default function GeorefPage() {
   const [residuals, setResiduals] = useState<Residual[]>([]);
   const [transformMethod, setTransformMethod] = useState("auto");
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [jobProgress, setJobProgress] = useState<{ stage: string; progress_percent: number } | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const content = getTranslations(locale);
 
   useEffect(() => {
     gcpCountRef.current = gcps.length;
   }, [gcps.length]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    const events = new EventSource(`${apiBase}/api/v1/projects/${projectId}/events`);
+    events.onmessage = (message) => {
+      const event = JSON.parse(message.data) as { status: string; stage: string; progress_percent: number };
+      setJobProgress({ stage: event.stage, progress_percent: event.progress_percent });
+      if (event.status === "completed" && event.stage === "georeferencing") setGeorefStatus("completed");
+      if (event.status === "failed" && event.stage === "georeferencing") setGeorefStatus("error");
+    };
+    events.onerror = () => undefined;
+    return () => events.close();
+  }, [projectId]);
 
   useEffect(() => {
     const savedLocale = window.localStorage.getItem("vectoryai-locale");
@@ -297,6 +311,7 @@ export default function GeorefPage() {
       .then((response) => {
         if (!response.ok) throw new Error("Georeferencing request failed");
         setConfirmSubmit(false);
+        setJobProgress({ stage: "queued", progress_percent: 0 });
         setGeorefStatus("queued");
       })
       .catch(() => setGeorefStatus("error"));
@@ -572,7 +587,7 @@ export default function GeorefPage() {
               </button>
               {georefStatus === "queued" && (
                 <span className="upload-hint">
-                  {content.upload.georefQueued}
+                  {content.upload.georefQueued} {jobProgress ? `(${jobProgress.stage} ${Math.round(jobProgress.progress_percent)}%)` : ""}
                 </span>
               )}
               {georefStatus === "completed" && (
