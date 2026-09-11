@@ -93,6 +93,7 @@
     "methodTps": "TPS (10+ points)",
     "georefQueued": "Georeferencing queued",
     "georefComplete": "EOV raster ready",
+    "openViewer": "Inspect the EOV map",
     "rmse": "RMSE",
     "georefError": "Georeferencing failed. Check the point pairs and try again.",
     "confirmGeoref": "Confirm and warp this GCP set",
@@ -100,5 +101,20 @@
     "confirm": "Confirm",
     "cancel": "Cancel",
     "warnings": "Warnings"
+  },
+  "viewer": {
+    "eyebrow": "EOV map inspection",
+    "titleBefore": "See the plan",
+    "titleEmphasis": "in context.",
+    "description": "Compare the georeferenced raster with a reference map and inspect residuals in Hungarian EOV coordinates.",
+    "notReady": "The georeferenced raster is not ready yet.",
+    "loading": "Loading map layers...",
+    "layers": "Map layers",
+    "reference": "OpenStreetMap reference",
+    "raster": "Georeferenced raster",
+    "residuals": "GCP residual vectors",
+    "referenceOpacity": "Reference opacity",
+    "rasterOpacity": "Raster opacity",
+    "cursor": "EOV cursor coordinates"
   }
 }

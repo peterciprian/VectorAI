@@ -708,6 +708,73 @@ em {
   display: flex;
   gap: 1rem;
 }
+.viewer-page {
+  min-height: 100vh;
+}
+.viewer-shell {
+  padding-bottom: 5rem;
+  padding-top: 4rem;
+}
+.viewer-heading {
+  max-width: 760px;
+}
+.viewer-heading h1 {
+  font-size: clamp(3rem, 5.5vw, 5.8rem);
+}
+.viewer-layout {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: 1fr 250px;
+  margin-top: 3rem;
+}
+.viewer-map {
+  background: #dfe4d2;
+  border: 1px solid var(--line);
+  height: 620px;
+  min-width: 0;
+}
+.layer-panel {
+  align-self: start;
+  background: var(--night);
+  color: var(--paper);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1.4rem;
+}
+.layer-panel .section-kicker {
+  color: var(--acid);
+  margin-bottom: 0.4rem;
+}
+.layer-panel label {
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+.layer-panel input[type="checkbox"] {
+  accent-color: var(--acid);
+}
+.layer-panel input[type="range"] {
+  accent-color: var(--acid);
+  margin-bottom: 0.7rem;
+  width: 100%;
+}
+.viewer-coordinate {
+  border-top: 1px solid rgba(242, 240, 232, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+  padding-top: 1rem;
+}
+.viewer-coordinate span {
+  color: #a8b3a3;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+}
+.viewer-coordinate strong {
+  color: var(--acid);
+  font: 1rem var(--mono);
+}
 .residual-list {
   display: flex;
   flex-wrap: wrap;
@@ -767,6 +834,12 @@ em {
   }
   .map-pane {
     height: 360px;
+  }
+  .viewer-layout {
+    grid-template-columns: 1fr;
+  }
+  .viewer-map {
+    height: 480px;
   }
 }
 @media (max-width: 600px) {

@@ -93,6 +93,7 @@
     "methodTps": "TPS (10+ pont)",
     "georefQueued": "A georeferálás várakozik",
     "georefComplete": "Az EOV-raszter elkészült",
+    "openViewer": "EOV-térkép megnyitása",
     "rmse": "RMSE",
     "georefError": "A georeferálás sikertelen. Ellenőrizze a pontpárokat, majd próbálja újra.",
     "confirmGeoref": "Erősítse meg az illesztőpontokat",
@@ -100,5 +101,20 @@
     "confirm": "Megerősítés",
     "cancel": "Mégse",
     "warnings": "Figyelmeztetések"
+  },
+  "viewer": {
+    "eyebrow": "EOV térképi ellenőrzés",
+    "titleBefore": "Lássa a tervet",
+    "titleEmphasis": "összefüggésében.",
+    "description": "Hasonlítsa össze a georeferált rasztert a referencia-térképpel, és vizsgálja meg a maradékhibákat magyar EOV-koordinátákon.",
+    "notReady": "A georeferált raszter még nem készült el.",
+    "loading": "Térképrétegek betöltése...",
+    "layers": "Térképrétegek",
+    "reference": "OpenStreetMap referencia",
+    "raster": "Georeferált raszter",
+    "residuals": "GCP maradékhiba-vektorok",
+    "referenceOpacity": "Referencia átlátszósága",
+    "rasterOpacity": "Raszter átlátszósága",
+    "cursor": "EOV kurzorkoordináták"
   }
 }
