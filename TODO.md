@@ -105,10 +105,10 @@ This file records known gaps and limitations identified while implementing PBIs.
 
 - [x] Add persistent job records and lifecycle states.
 - [x] Add SSE event hub and frontend progress subscription.
-- [ ] Add retry/cancel support and user-visible failure recovery.
+- [x] Add retry/cancel support and user-visible failure recovery for processing jobs.
 - [x] Add stage-level progress for ingestion, georeferencing, OCR, and vectorization.
-- [ ] Add stage-level progress for topology and export.
-- [ ] Configure Celery worker concurrency from deployment settings instead of the current fixed development default.
+- [x] Add stage-level progress for topology and export.
+- [x] Configure Celery worker concurrency from deployment settings instead of the current fixed development default.
 - [ ] Run the worker as a non-root container user.
 
 ## Cross-Cutting Infrastructure

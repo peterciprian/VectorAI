@@ -39,6 +39,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vectoryai}:${POSTGRES_PASSWORD:-vectoryai_dev}@postgres:5432/${POSTGRES_DB:-vectoryai}
       REDIS_URL: redis://redis:6379/0
       STORAGE_ROOT: /storage/projects
+      CELERY_CONCURRENCY: ${CELERY_CONCURRENCY:-2}
     volumes:
       - ./storage:/storage
     depends_on:

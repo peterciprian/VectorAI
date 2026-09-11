@@ -26,11 +26,13 @@ async def update_job(job_id: str | None, project_id: str, status: str, stage: st
         try:
             await connection.execute("""
                 CREATE TABLE IF NOT EXISTS processing_jobs (
-                    id TEXT PRIMARY KEY, project_id TEXT NOT NULL, job_type TEXT NOT NULL,
+                    id TEXT PRIMARY KEY, project_id TEXT NOT NULL, job_type TEXT NOT NULL, task_name TEXT, task_args JSONB,
                     status TEXT NOT NULL, stage TEXT NOT NULL, progress_percent DOUBLE PRECISION NOT NULL DEFAULT 0,
                     error_details JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), started_at TIMESTAMPTZ, finished_at TIMESTAMPTZ
                 )
             """)
+            await connection.execute("ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS task_name TEXT")
+            await connection.execute("ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS task_args JSONB")
             await connection.execute(
                 """UPDATE processing_jobs SET status=$2, stage=$3, progress_percent=$4,
                    error_details=$5::jsonb,

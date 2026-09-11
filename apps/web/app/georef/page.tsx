@@ -86,6 +86,7 @@ export default function GeorefPage() {
   const [transformMethod, setTransformMethod] = useState("auto");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [jobProgress, setJobProgress] = useState<{ stage: string; progress_percent: number } | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const content = getTranslations(locale);
 
@@ -308,13 +309,29 @@ export default function GeorefPage() {
         points: gcps,
       }),
     })
-      .then((response) => {
+      .then(async (response) => {
         if (!response.ok) throw new Error("Georeferencing request failed");
+        const result = (await response.json()) as { job_id: string };
+        setJobId(result.job_id);
         setConfirmSubmit(false);
         setJobProgress({ stage: "queued", progress_percent: 0 });
         setGeorefStatus("queued");
       })
       .catch(() => setGeorefStatus("error"));
+  }
+
+  async function cancelJob() {
+    if (!jobId) return;
+    const response = await fetch(`${apiBase}/api/v1/jobs/${jobId}/cancel`, { method: "POST" });
+    if (response.ok) setGeorefStatus("error");
+  }
+
+  async function retryJob() {
+    if (!jobId) return;
+    const response = await fetch(`${apiBase}/api/v1/jobs/${jobId}/retry`, { method: "POST" });
+    if (!response.ok) return;
+    setJobProgress({ stage: "queued", progress_percent: 0 });
+    setGeorefStatus("queued");
   }
 
   async function handleReferenceUpload(
@@ -588,6 +605,7 @@ export default function GeorefPage() {
               {georefStatus === "queued" && (
                 <span className="upload-hint">
                   {content.upload.georefQueued} {jobProgress ? `(${jobProgress.stage} ${Math.round(jobProgress.progress_percent)}%)` : ""}
+                  <button className="secondary-button" type="button" onClick={cancelJob}>{content.upload.cancelJob}</button>
                 </span>
               )}
               {georefStatus === "completed" && (
@@ -605,6 +623,7 @@ export default function GeorefPage() {
               {georefStatus === "error" && (
                 <span className="upload-error">
                   {content.upload.georefError}
+                  {jobId && <button className="secondary-button" type="button" onClick={retryJob}>{content.upload.retryJob}</button>}
                 </span>
               )}
             </div>

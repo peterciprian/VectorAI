@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from .exporter import export_project_shapefiles
 from .topology import clean_project_topology, validate_project_topology
-from .jobs import create_job, get_job, project_events, serializable_job
+from .jobs import create_job, get_job, project_events, serializable_job, set_job_state
 from shapely.geometry import shape
 
 cors_origins = [
@@ -129,7 +129,7 @@ def _database_url() -> str | None:
 def _queue_job(project_id: str, task_name: str, args: list[object], job_type: str) -> str:
     job_id = str(uuid4())
     try:
-        asyncio.run(create_job(project_id, job_id, job_type))
+        asyncio.run(create_job(project_id, job_id, job_type, task_name, args))
     except Exception as error:
         raise HTTPException(status_code=503, detail="Job persistence is unavailable") from error
     try:
@@ -427,6 +427,35 @@ async def processing_job_status(job_id: str) -> dict[str, object]:
     return serializable_job(job)
 
 
+@app.post("/api/v1/jobs/{job_id}/cancel")
+async def cancel_processing_job(job_id: str) -> dict[str, object]:
+    job = await get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job["status"] in {"completed", "failed", "cancelled"}:
+        raise HTTPException(status_code=409, detail="Job is no longer cancellable")
+    celery_client.control.revoke(job_id, terminate=False)
+    updated = await set_job_state(job_id, "cancelled", "cancelled", float(job.get("progress_percent") or 0), "Cancelled by user")
+    return serializable_job(updated or {"id": job_id, "status": "cancelled"})
+
+
+@app.post("/api/v1/jobs/{job_id}/retry")
+async def retry_processing_job(job_id: str) -> dict[str, object]:
+    job = await get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job["status"] not in {"failed", "cancelled"}:
+        raise HTTPException(status_code=409, detail="Only failed or cancelled jobs can be retried")
+    task_name = job.get("task_name")
+    task_args = job.get("task_args") or []
+    if not task_name:
+        raise HTTPException(status_code=422, detail="Job does not contain retry information")
+    await set_job_state(job_id, "queued", "queued", 0)
+    celery_client.send_task(task_name, args=[*task_args, job_id], task_id=job_id)
+    updated = await get_job(job_id)
+    return serializable_job(updated or {"id": job_id, "status": "queued"})
+
+
 @app.get("/api/v1/projects/{project_id}/events")
 async def processing_events(project_id: str) -> StreamingResponse:
     return StreamingResponse(project_events(project_id), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -525,15 +554,24 @@ def update_vector_layer(project_id: str, layer_id: str, request: FeatureCollecti
 
 @app.get("/api/v1/projects/{project_id}/export/shapefile")
 def export_shapefile(project_id: str) -> FileResponse:
+    job_id = str(uuid4())
     try:
+        asyncio.run(create_job(project_id, job_id, "export", "api.export_shapefile", []))
+        asyncio.run(set_job_state(job_id, "running", "export", 10))
         topology = validate_project_topology(str(storage_root), project_id)
         if not topology["valid"]:
             raise HTTPException(status_code=422, detail={"message": "Topology validation failed", "validation": topology})
         archive_path = export_project_shapefiles(project_id, str(storage_root))
+        asyncio.run(set_job_state(job_id, "completed", "export", 100))
     except FileNotFoundError as error:
+        asyncio.run(set_job_state(job_id, "failed", "export", 100, str(error)))
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
+        asyncio.run(set_job_state(job_id, "failed", "export", 100, str(error)))
         raise HTTPException(status_code=422, detail=str(error)) from error
+    except HTTPException as error:
+        asyncio.run(set_job_state(job_id, "failed", "topology", 100, str(error.detail)))
+        raise
     return FileResponse(archive_path, media_type="application/zip", filename=archive_path.name)
 
 
@@ -550,7 +588,16 @@ def clean_topology(project_id: str) -> dict[str, object]:
     project_directory = storage_root / project_id
     if not project_directory.exists():
         raise HTTPException(status_code=404, detail="Project not found")
-    return clean_project_topology(str(storage_root), project_id)
+    job_id = str(uuid4())
+    asyncio.run(create_job(project_id, job_id, "topology", "api.clean_topology", []))
+    asyncio.run(set_job_state(job_id, "running", "topology", 10))
+    try:
+        result = clean_project_topology(str(storage_root), project_id)
+        asyncio.run(set_job_state(job_id, "completed", "topology", 100))
+        return {**result, "job_id": job_id}
+    except Exception as error:
+        asyncio.run(set_job_state(job_id, "failed", "topology", 100, str(error)))
+        raise
 
 
 @app.get("/api/v1/projects/{project_id}/deepzoom")

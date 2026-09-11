@@ -100,7 +100,9 @@
     "confirmGeorefText": "A kiválasztott pontok alapján készül el az EOV-raszter.",
     "confirm": "Megerősítés",
     "cancel": "Mégse",
-    "warnings": "Figyelmeztetések"
+    "warnings": "Figyelmeztetések",
+    "cancelJob": "Feldolgozás megszakítása",
+    "retryJob": "Feldolgozás újraindítása"
   },
   "viewer": {
     "eyebrow": "EOV térképi ellenőrzés",

@@ -100,7 +100,9 @@
     "confirmGeorefText": "The selected points will be used to create the EOV raster.",
     "confirm": "Confirm",
     "cancel": "Cancel",
-    "warnings": "Warnings"
+    "warnings": "Warnings",
+    "cancelJob": "Cancel processing",
+    "retryJob": "Retry processing"
   },
   "viewer": {
     "eyebrow": "EOV map inspection",
