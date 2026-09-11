@@ -9,6 +9,10 @@ import TileLayer from "ol/layer/Tile";
 import WebGLTileLayer from "ol/layer/WebGLTile";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
+import Modify from "ol/interaction/Modify";
+import Draw from "ol/interaction/Draw";
+import Snap from "ol/interaction/Snap";
+import Select from "ol/interaction/Select";
 import OSM from "ol/source/OSM";
 import GeoTIFF from "ol/source/GeoTIFF";
 import GeoJSON from "ol/format/GeoJSON";
@@ -58,12 +62,17 @@ export default function ViewerPage() {
   const [discoveredLayers, setDiscoveredLayers] = useState<DiscoveredLayer[]>([]);
   const [topologyStatus, setTopologyStatus] = useState<{ valid: boolean; issue_count: number } | null>(null);
   const [topologyBusy, setTopologyBusy] = useState(false);
+  const [activeLayerId, setActiveLayerId] = useState("");
+  const [editMode, setEditMode] = useState<"none" | "modify" | "draw" | "delete" | "inspect">("none");
+  const [editStatus, setEditStatus] = useState("");
+  const [selectedProperties, setSelectedProperties] = useState<Record<string, unknown> | null>(null);
   const mapElement = useRef<HTMLDivElement>(null);
   const mapRef = useRef<OlMap | null>(null);
   const rasterLayerRef = useRef<WebGLTileLayer | null>(null);
   const referenceLayerRef = useRef<TileLayer<OSM> | null>(null);
   const residualLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const vectorLayerRefs = useRef<Record<string, VectorLayer<VectorSource>>>({});
+  const editInteractionRefs = useRef<(Modify | Draw | Snap | Select)[]>([]);
   const content = getTranslations(locale);
 
   useEffect(() => {
@@ -193,6 +202,46 @@ export default function ViewerPage() {
     };
   }, [projectId]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    const vectorLayer = vectorLayerRefs.current[activeLayerId];
+    const source = vectorLayer?.getSource();
+    editInteractionRefs.current.forEach((interaction) => map?.removeInteraction(interaction));
+    editInteractionRefs.current = [];
+    setSelectedProperties(null);
+    if (!map || !source || editMode === "none") return;
+    if (editMode === "modify") {
+      const modify = new Modify({ source });
+      const snap = new Snap({ source });
+      map.addInteraction(modify);
+      map.addInteraction(snap);
+      editInteractionRefs.current = [modify, snap];
+    }
+    if (editMode === "draw") {
+      const layer = discoveredLayers.find((candidate) => candidate.layer_id === activeLayerId);
+      if (!layer) return;
+      const draw = new Draw({ source, type: layer.geometry_type as "Point" | "LineString" | "Polygon" });
+      const snap = new Snap({ source });
+      map.addInteraction(draw);
+      map.addInteraction(snap);
+      editInteractionRefs.current = [draw, snap];
+    }
+    if (editMode === "delete" || editMode === "inspect") {
+      const select = new Select({ layers: [vectorLayer] });
+      select.on("select", (event) => {
+        const feature = event.selected[0];
+        if (editMode === "delete" && feature) source.removeFeature(feature);
+        if (editMode === "inspect" && feature) setSelectedProperties(feature.getProperties());
+      });
+      map.addInteraction(select);
+      editInteractionRefs.current = [select];
+    }
+    return () => {
+      editInteractionRefs.current.forEach((interaction) => map.removeInteraction(interaction));
+      editInteractionRefs.current = [];
+    };
+  }, [activeLayerId, discoveredLayers, editMode]);
+
   function updateDiscoveredLayer(layerId: string, visible: boolean) {
     vectorLayerRefs.current[layerId]?.setVisible(visible);
   }
@@ -225,6 +274,27 @@ export default function ViewerPage() {
       setTopologyStatus(null);
     } finally {
       setTopologyBusy(false);
+    }
+  }
+
+  async function saveActiveLayer() {
+    const source = vectorLayerRefs.current[activeLayerId]?.getSource();
+    if (!source || !activeLayerId) return;
+    setEditStatus("saving");
+    const collection = new GeoJSON().writeFeaturesObject(source.getFeatures(), {
+      dataProjection: "EPSG:23700",
+      featureProjection: "EPSG:23700",
+    });
+    try {
+      const response = await fetch(`${apiBase}/api/v1/projects/${projectId}/layers/${activeLayerId}/features`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(collection),
+      });
+      if (!response.ok) throw new Error("Save failed");
+      setEditStatus("saved");
+    } catch {
+      setEditStatus("error");
     }
   }
 
@@ -329,6 +399,25 @@ export default function ViewerPage() {
                   {content.viewer.cleanTopology}
                 </button>
               )}
+            </div>
+            <div className="viewer-editor">
+              <p className="section-kicker">{content.viewer.editor}</p>
+              <select aria-label={content.viewer.activeLayer} value={activeLayerId} onChange={(event) => setActiveLayerId(event.target.value)}>
+                <option value="">{content.viewer.chooseLayer}</option>
+                {discoveredLayers.map((layer) => <option key={layer.layer_id} value={layer.layer_id}>{layer.code || layer.name || layer.layer_id}</option>)}
+              </select>
+              <select aria-label={content.viewer.editMode} value={editMode} onChange={(event) => setEditMode(event.target.value as typeof editMode)} disabled={!activeLayerId}>
+                <option value="none">{content.viewer.editNone}</option>
+                <option value="modify">{content.viewer.editModify}</option>
+                <option value="draw">{content.viewer.editDraw}</option>
+                <option value="delete">{content.viewer.editDelete}</option>
+                <option value="inspect">{content.viewer.editInspect}</option>
+              </select>
+              <button type="button" className="secondary-button" onClick={saveActiveLayer} disabled={!activeLayerId || editMode === "none"}>
+                {content.viewer.saveEdits}
+              </button>
+              {editStatus && <p className="upload-hint">{editStatus}</p>}
+              {selectedProperties && <pre className="viewer-properties">{JSON.stringify(selectedProperties, null, 2)}</pre>}
             </div>
             <label>
               <input

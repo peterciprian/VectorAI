@@ -122,6 +122,16 @@
     "topologyValid": "A topológia érvényes",
     "topologyIssues": "topológiai hiba",
     "topologyUnavailable": "A topológia-ellenőrzés nem érhető el"
+    ,"editor": "Vektorszerkesztő",
+    "activeLayer": "Aktív réteg",
+    "chooseLayer": "Réteg kiválasztása",
+    "editMode": "Szerkesztési mód",
+    "editNone": "Csak megtekintés",
+    "editModify": "Csúcsok módosítása",
+    "editDraw": "Elem rajzolása",
+    "editDelete": "Elem törlése",
+    "editInspect": "Attribútumok megtekintése",
+    "saveEdits": "Módosítások mentése"
   },
   "legend": {
     "back": "Vissza a térképhez",

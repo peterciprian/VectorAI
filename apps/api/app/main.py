@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from .exporter import export_project_shapefiles
 from .topology import clean_project_topology, validate_project_topology
+from shapely.geometry import shape
 
 cors_origins = [
     origin.strip()
@@ -69,6 +70,11 @@ class LegendUpdateRequest(BaseModel):
 
 class PolygonVectorizeRequest(BaseModel):
     legend_item: LegendItem
+
+
+class FeatureCollectionRequest(BaseModel):
+    type: str
+    features: list[dict[str, object]]
 
 
 async def _persist_legend_items(project_id: str, items: list[LegendItem]) -> None:
@@ -445,6 +451,61 @@ def vector_layer_catalog(project_id: str) -> dict[str, object]:
             "geojson_url": f"/api/v1/projects/{project_id}/layers/{layer_id}/geojson",
         })
     return {"project_id": project_id, "layers": layers}
+
+
+async def _persist_edited_layer(project_id: str, layer_id: str, geometry_type: str, collection: FeatureCollectionRequest) -> None:
+    database_url = _database_url()
+    if not database_url:
+        return
+    connection = await asyncpg.connect(database_url)
+    try:
+        await connection.execute(
+            "DELETE FROM vector_features WHERE project_id = $1 AND layer_id = $2",
+            project_id,
+            layer_id,
+        )
+        await connection.executemany(
+            """INSERT INTO vector_features (project_id, layer_id, geometry_type, geometry, properties)
+               VALUES ($1, $2, $3, ST_SetSRID(ST_GeomFromGeoJSON($4), 23700), $5::jsonb)""",
+            [
+                (project_id, layer_id, geometry_type, json.dumps(feature["geometry"]), json.dumps(feature.get("properties", {})))
+                for feature in collection.features
+            ],
+        )
+    finally:
+        await connection.close()
+
+
+@app.put("/api/v1/projects/{project_id}/layers/{layer_id}/features")
+def update_vector_layer(project_id: str, layer_id: str, request: FeatureCollectionRequest) -> dict[str, object]:
+    safe_layer_id = Path(layer_id).name
+    project_directory = storage_root / project_id
+    layer_path = project_directory / "layers" / f"{safe_layer_id}.geojson"
+    registry_path = project_directory / "legend" / "registry.json"
+    if not layer_path.exists() or not registry_path.exists():
+        raise HTTPException(status_code=404, detail="Vector layer is not ready")
+    if request.type != "FeatureCollection":
+        raise HTTPException(status_code=422, detail="Expected a GeoJSON FeatureCollection")
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    item = next((item for item in registry.get("items", []) if item.get("id") == safe_layer_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Legend layer is not registered")
+    geometry_type = str(item.get("geometry_type", ""))
+    for feature in request.features:
+        geometry = feature.get("geometry")
+        if not isinstance(geometry, dict) or geometry.get("type") != geometry_type:
+            raise HTTPException(status_code=422, detail=f"All features must be {geometry_type}")
+        try:
+            if shape(geometry).is_empty:
+                raise ValueError("empty geometry")
+        except (TypeError, ValueError, KeyError) as error:
+            raise HTTPException(status_code=422, detail="Invalid GeoJSON geometry") from error
+    layer_path.write_text(json.dumps(request.model_dump(), ensure_ascii=False), encoding="utf-8")
+    try:
+        asyncio.run(_persist_edited_layer(project_id, safe_layer_id, geometry_type, request))
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Vector database persistence is unavailable") from error
+    return {"project_id": project_id, "layer_id": safe_layer_id, "updated_features": len(request.features)}
 
 
 @app.get("/api/v1/projects/{project_id}/export/shapefile")

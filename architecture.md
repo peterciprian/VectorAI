@@ -413,6 +413,8 @@ sequenceDiagram
     API-->>User: File download stream (200 OK)
 ```
 
+  Edited GeoJSON FeatureCollections are sent to `PUT /api/v1/projects/{id}/layers/{layer_id}/features`; the API validates the layer's single geometry type, updates the file artifact, and synchronizes the `vector_features` PostGIS table.
+
 ---
 
 ## 5. Comprehensive API Data Contracts & Sockets

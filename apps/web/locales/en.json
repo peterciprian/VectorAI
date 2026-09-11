@@ -122,6 +122,16 @@
     "topologyValid": "Topology is valid",
     "topologyIssues": "topology issues found",
     "topologyUnavailable": "Topology validation unavailable"
+    ,"editor": "Vector editor",
+    "activeLayer": "Active layer",
+    "chooseLayer": "Choose a layer",
+    "editMode": "Edit mode",
+    "editNone": "Inspection only",
+    "editModify": "Modify vertices",
+    "editDraw": "Draw feature",
+    "editDelete": "Delete feature",
+    "editInspect": "Inspect attributes",
+    "saveEdits": "Save edits"
   },
   "legend": {
     "back": "Back to map",

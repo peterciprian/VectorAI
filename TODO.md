@@ -95,8 +95,9 @@ This file records known gaps and limitations identified while implementing PBIs.
 - [x] Add GeoJSON layer catalog and download endpoints.
 - [x] Add a viewer action for downloading the generated Shapefile ZIP.
 - [x] Persist Polygon, LineString, and Point features in PostGIS for export/edit parity.
-- [ ] Add vector layer editor interactions: select, modify, draw, delete, snap, split, and merge.
-- [ ] Add attribute inspection and feature-edit persistence.
+- [x] Add vector layer editor interactions: select, modify, draw, delete, and snap.
+- [x] Add attribute inspection and feature-edit persistence.
+- [ ] Add geometry split and merge commands.
 - [x] Add topology validation panel and one-click cleanup integration.
 - [ ] Add topology browser tests and stronger line endpoint/gap validation.
 
