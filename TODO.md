@@ -103,7 +103,9 @@ This file records known gaps and limitations identified while implementing PBIs.
 - [x] Add attribute inspection and feature-edit persistence.
 - [ ] Add geometry split and merge commands.
 - [x] Add topology validation panel and one-click cleanup integration.
-- [ ] Add topology browser tests and stronger line endpoint/gap validation.
+- [x] Resolve same-layer polygon overlaps through deterministic planar partitioning.
+- [x] Bridge and validate near-endpoint LineString gaps within the cleanup tolerance.
+- [ ] Add topology browser tests and persist cleanup results back to PostGIS.
 
 ## PBI-12: Async Progress and Jobs
 

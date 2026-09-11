@@ -316,7 +316,8 @@ flowchart LR
 
 1. **Vertex Snapping:** `shapely.ops.snap(geom1, geom2, tolerance=0.2)` snaps vertices within $20\text{ cm}$ in EOV space to close micro-gaps.
 2. **Sliver Elimination:** Identifies polygons with $\text{Area} < 1.0\text{ m}^2$ or thinness ratio $\frac{4\pi \cdot \text{Area}}{\text{Perimeter}^2} < 0.05$, merging them into the adjacent polygon sharing the longest boundary.
-3. **Planar Partitioning:** Runs `shapely.ops.unary_union` across polygon layers to ensure planar topology with zero self-intersections or overlaps.
+3. **Planar Partitioning:** Subtracts already-occupied polygon area in deterministic feature order and splits multipart results, ensuring same-layer polygons have zero overlaps.
+4. **Line Gap Bridging:** Detects LineString endpoints within 0.2 m, inserts a connecting segment, and merges the result into a continuous line.
 
 ---
 

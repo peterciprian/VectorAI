@@ -38,3 +38,51 @@ class TopologyTests(unittest.TestCase):
 
             self.assertEqual(result["removed_slivers"], 1)
             self.assertTrue(result["validation"]["valid"])
+
+    def test_clean_partitions_overlapping_polygons(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            layer = root / "project" / "layers"
+            layer.mkdir(parents=True)
+            collection = {"type": "FeatureCollection", "features": [
+                {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]]}, "properties": {"rank": 1}},
+                {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[1, 1], [3, 1], [3, 3], [1, 3], [1, 1]]]}, "properties": {"rank": 2}},
+            ]}
+            (layer / "zones.geojson").write_text(json.dumps(collection), encoding="utf-8")
+
+            result = clean_project_topology(str(root), "project", sliver_area=0.01)
+
+            self.assertEqual(result["resolved_overlaps"], 1)
+            self.assertTrue(result["validation"]["valid"])
+
+    def test_clean_bridges_nearby_line_endpoints(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            layer = root / "project" / "layers"
+            layer.mkdir(parents=True)
+            collection = {"type": "FeatureCollection", "features": [
+                {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 0]]}, "properties": {}},
+                {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[1.1, 0], [2, 0]]}, "properties": {}},
+            ]}
+            (layer / "roads.geojson").write_text(json.dumps(collection), encoding="utf-8")
+
+            result = clean_project_topology(str(root), "project", snap_tolerance=0.2)
+            saved = json.loads((layer / "roads.geojson").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["bridged_lines"], 1)
+            self.assertEqual(len(saved["features"]), 1)
+
+    def test_validation_flags_nearby_line_gap(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            layer = root / "project" / "layers"
+            layer.mkdir(parents=True)
+            collection = {"type": "FeatureCollection", "features": [
+                {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 0]]}, "properties": {}},
+                {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[1.1, 0], [2, 0]]}, "properties": {}},
+            ]}
+            (layer / "roads.geojson").write_text(json.dumps(collection), encoding="utf-8")
+
+            result = validate_project_topology(str(root), "project", gap_distance=0.2)
+
+            self.assertIn("line_gap", {issue["kind"] for issue in result["issues"]})
