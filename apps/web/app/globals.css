@@ -565,6 +565,77 @@ em {
 .upload-card .upload-submit {
   font-size: 0.68rem;
 }
+.georef-page {
+  min-height: 100vh;
+}
+.georef-shell {
+  padding-bottom: 5rem;
+  padding-top: 4rem;
+}
+.georef-heading {
+  max-width: 720px;
+}
+.georef-heading h1 {
+  font-size: clamp(3rem, 5.5vw, 5.8rem);
+}
+.map-panes {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 3rem;
+}
+.map-pane {
+  background: #dfe4d2;
+  border: 1px solid var(--line);
+  height: 460px;
+  width: 100%;
+}
+.gcp-panel {
+  border-top: 1px solid var(--line);
+  margin-top: 2rem;
+  padding-top: 1.2rem;
+}
+.gcp-panel h2 {
+  font-size: 1.8rem;
+  margin: 0 0 1rem;
+}
+.gcp-row {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: 4rem 1fr 1fr auto;
+  padding: 0.7rem 0;
+}
+.gcp-row span {
+  color: var(--coral);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.gcp-row input {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: 0.75rem var(--mono);
+  min-width: 0;
+  padding: 0.55rem;
+}
+.gcp-row button {
+  background: transparent;
+  border: 0;
+  color: var(--coral);
+  cursor: pointer;
+  font: 0.65rem var(--mono);
+  padding: 0.55rem 0;
+  text-transform: uppercase;
+}
+.georef-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2rem;
+}
 @media (max-width: 850px) {
   .hero {
     gap: 3rem;
@@ -611,6 +682,12 @@ em {
   }
   .upload-intro {
     max-width: 650px;
+  }
+  .map-panes {
+    grid-template-columns: 1fr;
+  }
+  .map-pane {
+    height: 360px;
   }
 }
 @media (max-width: 600px) {

@@ -68,6 +68,23 @@
     "job": "Feladat",
     "project": "Projekt",
     "apiUnavailable": "A helyi API nem érhető el. Indítsa el a Docker szolgáltatásokat, majd próbálja újra.",
-    "acceptedFormats": "PDF, JPG, PNG, TIFF, legfeljebb 200 MB"
+    "acceptedFormats": "PDF, JPG, PNG, TIFF, legfeljebb 200 MB",
+    "openGeoref": "Illesztőpontok elhelyezése",
+    "georefTitle": "Helyezze a tervet",
+    "georefTitleEmphasis": "a koordinátáiba.",
+    "georefIntro": "Kattintson egy pontra a terven, majd a referencia-térkép megfelelő helyére.",
+    "introHint": "Válasszon egy pontot a terven, majd a referencia megfelelő helyét.",
+    "planPane": "Nyers terv",
+    "referencePane": "Referencia-térkép",
+    "gcps": "Illesztőpontok",
+    "emptyGcps": "A folytatáshoz adjon meg legalább három pontpárt.",
+    "easting": "Keleti koordináta (X)",
+    "northing": "Északi koordináta (Y)",
+    "remove": "Eltávolítás",
+    "submitGeoref": "Transzformálás EOV-ba",
+    "georefQueued": "A georeferálás várakozik",
+    "georefComplete": "Az EOV-raszter elkészült",
+    "rmse": "RMSE",
+    "georefError": "A georeferálás sikertelen. Ellenőrizze a pontpárokat, majd próbálja újra."
   }
 }

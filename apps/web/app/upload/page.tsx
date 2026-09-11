@@ -106,7 +106,7 @@ export default function UploadPage() {
             {uploadStatus === 'uploading' ? `${content.upload.uploading} ${uploadProgress}%` : content.upload.submit} <span aria-hidden="true">&#8599;</span>
           </button>
           {uploadStatus === 'uploading' && <progress className="upload-progress" max="100" value={uploadProgress} />}
-          {uploadStatus === 'queued' && uploadResult && <p className="upload-success">{content.upload.queued}: {content.upload.job} {uploadResult.job_id}</p>}
+          {uploadStatus === 'queued' && uploadResult && <p className="upload-success">{content.upload.queued}: {content.upload.job} {uploadResult.job_id}<br /><Link className="upload-next-link" href={`/georef?project=${uploadResult.project_id}`}>{content.upload.openGeoref} &#8599;</Link></p>}
           {uploadStatus === 'error' && <p className="upload-error">{content.upload.error} {content.upload.apiUnavailable}</p>}
         </form>
       </section>

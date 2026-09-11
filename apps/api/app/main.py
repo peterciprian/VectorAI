@@ -11,6 +11,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from PIL import Image
+from pydantic import BaseModel, Field
 
 cors_origins = [
     origin.strip()
@@ -21,6 +22,21 @@ storage_root = Path(os.getenv("STORAGE_ROOT", "/storage/projects"))
 celery_client = Celery("vectoryai-api", broker=os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 allowed_suffixes = {".pdf", ".jpg", ".jpeg", ".png", ".tif", ".tiff"}
 max_upload_bytes = 200 * 1024 * 1024
+
+
+class GroundControlPoint(BaseModel):
+    id: str
+    pixel_x: float
+    pixel_y: float
+    map_x: float = Field(description="EOV easting in meters")
+    map_y: float = Field(description="EOV northing in meters")
+
+
+class GeoreferenceRequest(BaseModel):
+    transform_method: str = "affine"
+    target_crs: str = "EPSG:23700"
+    reference_id: str | None = None
+    points: list[GroundControlPoint]
 
 app = FastAPI(title="VectoryAI API", version="0.1.0")
 app.add_middleware(
@@ -128,6 +144,44 @@ def project_thumbnail(project_id: str) -> FileResponse:
     if not thumbnail_path.exists():
         raise HTTPException(status_code=404, detail="Thumbnail is not ready")
     return FileResponse(thumbnail_path, media_type="image/jpeg")
+
+
+@app.post("/api/v1/projects/{project_id}/georef", status_code=202)
+def start_georeferencing(project_id: str, request: GeoreferenceRequest) -> dict[str, object]:
+    master_path = storage_root / project_id / "raster" / "master.jpg"
+    if not master_path.exists():
+        raise HTTPException(status_code=404, detail="Ingested master raster is not ready")
+    if request.transform_method != "affine":
+        raise HTTPException(status_code=422, detail="Only affine transformation is currently supported")
+    if request.target_crs != "EPSG:23700":
+        raise HTTPException(status_code=422, detail="Only EPSG:23700 EOV is currently supported")
+    if len(request.points) < 3:
+        raise HTTPException(status_code=422, detail="Affine georeferencing requires at least 3 GCPs")
+
+    job = celery_client.send_task(
+        "vectoryai.warp_georef",
+        args=[project_id, [point.model_dump() for point in request.points], str(storage_root)],
+    )
+    return {"project_id": project_id, "job_id": job.id, "status": "queued", "target_crs": request.target_crs}
+
+
+@app.get("/api/v1/projects/{project_id}/georef/status")
+def georeference_status(project_id: str) -> dict[str, object]:
+    metadata_path = storage_root / project_id / "georef" / "metadata.json"
+    if not metadata_path.exists():
+        if (storage_root / project_id / "raster" / "master.jpg").exists():
+            return {"project_id": project_id, "status": "pending"}
+        raise HTTPException(status_code=404, detail="Project not found")
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    return {"project_id": project_id, "status": "completed", **metadata, "cog_url": f"/api/v1/projects/{project_id}/georef/cog"}
+
+
+@app.get("/api/v1/projects/{project_id}/georef/cog")
+def georeferenced_raster(project_id: str) -> FileResponse:
+    output_path = storage_root / project_id / "georef" / "warped_eov.tif"
+    if not output_path.exists():
+        raise HTTPException(status_code=404, detail="Georeferenced raster is not ready")
+    return FileResponse(output_path, media_type="image/tiff")
 
 
 @app.get("/api/v1/projects/{project_id}/deepzoom")

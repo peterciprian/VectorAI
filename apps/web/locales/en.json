@@ -68,6 +68,23 @@
     "job": "Job",
     "project": "Project",
     "apiUnavailable": "The local API is unavailable. Start the Docker services and try again.",
-    "acceptedFormats": "PDF, JPG, PNG, TIFF up to 200 MB"
+    "acceptedFormats": "PDF, JPG, PNG, TIFF up to 200 MB",
+    "openGeoref": "Place ground control points",
+    "georefTitle": "Place the plan",
+    "georefTitleEmphasis": "in its coordinates.",
+    "georefIntro": "Click a point on the plan, then click its matching location on the reference map.",
+    "introHint": "Select a point on the plan, then select its matching reference location.",
+    "planPane": "Raw plan",
+    "referencePane": "Reference map",
+    "gcps": "Ground control points",
+    "emptyGcps": "Add at least three point pairs to continue.",
+    "easting": "Easting (X)",
+    "northing": "Northing (Y)",
+    "remove": "Remove",
+    "submitGeoref": "Warp to EOV",
+    "georefQueued": "Georeferencing queued",
+    "georefComplete": "EOV raster ready",
+    "rmse": "RMSE",
+    "georefError": "Georeferencing failed. Check the point pairs and try again."
   }
 }

@@ -3,6 +3,7 @@ import os
 from celery import Celery
 
 from .ingestion import ingest_document
+from .georef import georeference_raster, write_georef_metadata
 
 celery_app = Celery(
     "vectoryai",
@@ -30,3 +31,14 @@ def ingest_document_task(
         page_number=page_number,
         source_filename=source_filename,
     )
+
+
+@celery_app.task(name="vectoryai.warp_georef")
+def warp_georef_task(project_id: str, gcps: list[dict[str, object]], storage_root: str) -> dict[str, object]:
+    project_directory = os.path.join(storage_root, project_id)
+    input_path = os.path.join(project_directory, "raster", "master.jpg")
+    output_path = os.path.join(project_directory, "georef", "warped_eov.tif")
+    metadata = georeference_raster(input_path, output_path, gcps)
+    metadata["project_id"] = project_id
+    write_georef_metadata(os.path.join(project_directory, "georef", "metadata.json"), metadata)
+    return metadata
