@@ -590,6 +590,29 @@ em {
   height: 460px;
   width: 100%;
 }
+.reference-upload {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  display: block;
+  font-size: 0.65rem;
+  margin-top: 0.8rem;
+  padding: 0.7rem;
+}
+.reference-upload input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+.reference-toggle {
+  display: block;
+  font-size: 0.65rem;
+  margin-top: 0.8rem;
+}
+.reference-toggle input {
+  accent-color: var(--coral);
+}
 .gcp-panel {
   border-top: 1px solid var(--line);
   margin-top: 2rem;

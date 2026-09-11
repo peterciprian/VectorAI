@@ -13,6 +13,7 @@ import ImageLayer from 'ol/layer/Image';
 import VectorSource from 'ol/source/Vector';
 import OSM from 'ol/source/OSM';
 import Static from 'ol/source/ImageStatic';
+import GeoJSON from 'ol/format/GeoJSON';
 import Projection from 'ol/proj/Projection';
 import { fromLonLat, toLonLat, transform } from 'ol/proj';
 import Style from 'ol/style/Style';
@@ -49,9 +50,12 @@ export default function GeorefPage() {
   const [metadata, setMetadata] = useState<IngestionMetadata | null>(null);
   const [gcps, setGcps] = useState<Gcp[]>([]);
   const [pendingPixel, setPendingPixel] = useState<[number, number] | null>(null);
+  const [referenceLayerVisible, setReferenceLayerVisible] = useState(false);
+  const [referenceLayerName, setReferenceLayerName] = useState('');
   const pendingPixelRef = useRef<[number, number] | null>(null);
   const planMapRef = useRef<OlMap | null>(null);
   const referenceMapRef = useRef<OlMap | null>(null);
+  const referenceLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const planElement = useRef<HTMLDivElement>(null);
   const referenceElement = useRef<HTMLDivElement>(null);
   const [georefStatus, setGeorefStatus] = useState<'idle' | 'queued' | 'completed' | 'error'>('idle');
@@ -98,6 +102,7 @@ export default function GeorefPage() {
       referenceMap.setTarget(undefined);
       planMapRef.current = null;
       referenceMapRef.current = null;
+      referenceLayerRef.current = null;
     };
   }, [metadata, projectId, gcps.length]);
 
@@ -131,6 +136,31 @@ export default function GeorefPage() {
       if (!response.ok) throw new Error('Georeferencing request failed');
       setGeorefStatus('queued');
     }).catch(() => setGeorefStatus('error'));
+  }
+
+  async function handleReferenceUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !projectId || !referenceMapRef.current) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('crs', 'EPSG:23700');
+    const response = await fetch(`${apiBase}/api/v1/projects/${projectId}/georef/reference`, { method: 'POST', body: formData });
+    if (!response.ok) return;
+    const result = await response.json() as { reference_id: string; filename: string; url: string };
+    const geoJson = await fetch(`${apiBase}${result.url}`).then((referenceResponse) => referenceResponse.json());
+    const referenceSource = new VectorSource({
+      features: new GeoJSON().readFeatures(geoJson, { dataProjection: 'EPSG:23700', featureProjection: 'EPSG:3857' }),
+    });
+    const referenceLayer = new VectorLayer({ source: referenceSource, style: new Style({ stroke: new Stroke({ color: '#e36d50', width: 3 }), fill: new Fill({ color: 'rgba(227, 109, 80, 0.12)' }) }) });
+    referenceMapRef.current.addLayer(referenceLayer);
+    referenceLayerRef.current = referenceLayer;
+    setReferenceLayerName(result.filename);
+    setReferenceLayerVisible(true);
+  }
+
+  function toggleReferenceLayer(visible: boolean) {
+    setReferenceLayerVisible(visible);
+    referenceLayerRef.current?.setVisible(visible);
   }
 
   function handlePlanClick(event: React.MouseEvent<HTMLDivElement>) {
@@ -177,7 +207,7 @@ export default function GeorefPage() {
         <div className="georef-heading"><p className="eyebrow"><span className="eyebrow-dot" /> {content.upload.label}</p><h1>{content.upload.georefTitle}<br /><em>{content.upload.georefTitleEmphasis}</em></h1><p className="lede">{content.upload.georefIntro}</p></div>
         {!metadata && <p className="upload-error">{projectId ? content.upload.apiUnavailable : content.upload.georefError}</p>}
         {metadata && <>
-          <div className="map-panes"><div><p className="section-kicker">{content.upload.planPane}</p><div ref={planElement} className="map-pane" onClick={handlePlanClick} /></div><div><p className="section-kicker">{content.upload.referencePane}</p><div ref={referenceElement} className="map-pane" onClick={handleReferenceClick} /></div></div>
+          <div className="map-panes"><div><p className="section-kicker">{content.upload.planPane}</p><div ref={planElement} className="map-pane" onClick={handlePlanClick} /></div><div><p className="section-kicker">{content.upload.referencePane}</p><div ref={referenceElement} className="map-pane" onClick={handleReferenceClick} /><label className="reference-upload"><span>{referenceLayerName || content.upload.referenceUpload}</span><input type="file" accept=".geojson,.json" onChange={handleReferenceUpload} /></label>{referenceLayerName && <label className="reference-toggle"><input type="checkbox" checked={referenceLayerVisible} onChange={(event) => toggleReferenceLayer(event.target.checked)} /> {content.upload.referenceToggle}</label>}<p className="upload-hint">{content.upload.referenceFormat}</p></div></div>
           <p className="upload-hint">{pendingPixel ? `${content.upload.gcps}: ${Math.round(pendingPixel[0])}, ${Math.round(pendingPixel[1])}` : content.upload.introHint}</p>
           <section className="gcp-panel"><h2>{content.upload.gcps}</h2>{gcps.length === 0 && <p className="upload-hint">{content.upload.emptyGcps}</p>}{gcps.map((gcp, index) => <div className="gcp-row" key={gcp.id}><span>{gcp.id}</span><input aria-label={`${content.upload.easting} ${gcp.id}`} type="number" value={gcp.map_x} onChange={(event) => updateGcp(index, 'map_x', Number(event.target.value))} /><input aria-label={`${content.upload.northing} ${gcp.id}`} type="number" value={gcp.map_y} onChange={(event) => updateGcp(index, 'map_y', Number(event.target.value))} /><button type="button" onClick={() => setGcps((current) => current.filter((_, currentIndex) => currentIndex !== index))}>{content.upload.remove}</button></div>)}</section>
           <div className="georef-actions"><button className="button button-primary" type="button" disabled={gcps.length < 3 || georefStatus === 'queued'} onClick={submitGeoreferencing}>{content.upload.submitGeoref} <span aria-hidden="true">&#8599;</span></button>{georefStatus === 'queued' && <span className="upload-hint">{content.upload.georefQueued}</span>}{georefStatus === 'completed' && <span className="upload-success">{content.upload.georefComplete}: {content.upload.rmse} {rmse?.toFixed(3)} m</span>}{georefStatus === 'error' && <span className="upload-error">{content.upload.georefError}</span>}</div>

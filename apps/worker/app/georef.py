@@ -6,6 +6,7 @@ from typing import Any
 
 import numpy as np
 import rasterio
+import rasterio.shutil
 from affine import Affine
 from rasterio.enums import Resampling
 from rasterio.warp import calculate_default_transform, reproject
@@ -71,6 +72,7 @@ def georeference_raster(
     transform, residuals, rmse = calculate_affine(gcps)
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
+    temporary_output = output.with_suffix(".tmp.tif")
     with rasterio.open(input_path) as source:
         source_bounds = rasterio.transform.array_bounds(source.height, source.width, transform)
         left, bottom, right, top = source_bounds
@@ -98,7 +100,7 @@ def georeference_raster(
         )
         if profile["tiled"]:
             profile.update(blockxsize=256, blockysize=256)
-        with rasterio.open(output, "w", **profile) as destination:
+        with rasterio.open(temporary_output, "w", **profile) as destination:
             for band_index in range(1, source.count + 1):
                 reproject(
                     source=rasterio.band(source, band_index),
@@ -113,6 +115,15 @@ def georeference_raster(
                 overview_levels = [level for level in (2, 4, 8, 16) if destination_width // level >= 1 and destination_height // level >= 1]
                 destination.build_overviews(overview_levels, Resampling.average)
                 destination.update_tags(ns="rio_overview", resampling="average")
+    rasterio.shutil.copy(
+        temporary_output,
+        output,
+        driver="COG",
+        compress="DEFLATE",
+        blocksize=512,
+        overview_resampling="AVERAGE",
+    )
+    temporary_output.unlink(missing_ok=True)
 
     return {
         "target_crs": target_crs,
@@ -121,6 +132,7 @@ def georeference_raster(
         "rmse_m": rmse,
         "residuals": residuals,
         "output_path": str(output),
+        "driver": "COG",
     }
 
 

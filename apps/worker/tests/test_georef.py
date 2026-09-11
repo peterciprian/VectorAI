@@ -57,9 +57,11 @@ class GeoreferencingTests(unittest.TestCase):
             )
 
             self.assertEqual(metadata["target_crs"], "EPSG:23700")
+            self.assertEqual(metadata["driver"], "COG")
             self.assertTrue(output_path.exists())
             with rasterio.open(output_path) as warped:
                 self.assertEqual(warped.crs.to_string(), "EPSG:23700")
+                self.assertEqual(warped.driver, "GTiff")
                 self.assertAlmostEqual(warped.transform.c, 100)
                 self.assertAlmostEqual(warped.transform.f, 230)
 
