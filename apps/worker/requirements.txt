@@ -5,3 +5,4 @@ pyvips==2.2.3
 affine==2.4.0
 numpy==2.2.2
 rasterio==1.4.3
+pytesseract==0.3.13

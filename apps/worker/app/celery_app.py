@@ -4,6 +4,7 @@ from celery import Celery
 
 from .ingestion import ingest_document
 from .georef import georeference_raster, write_georef_metadata
+from .legend import parse_legend
 
 celery_app = Celery(
     "vectoryai",
@@ -48,3 +49,8 @@ def warp_georef_task(project_id: str, gcps: list[dict[str, object]], storage_roo
     except Exception as error:
         write_georef_metadata(metadata_path, {"project_id": project_id, "status": "failed", "error": str(error)})
         raise
+
+
+@celery_app.task(name="vectoryai.parse_legend")
+def parse_legend_task(project_id: str, source_path: str, storage_root: str, bbox: list[int] | None = None) -> dict[str, object]:
+    return parse_legend(project_id=project_id, source_path=source_path, storage_root=storage_root, bbox=bbox)

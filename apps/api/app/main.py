@@ -40,6 +40,10 @@ class GeoreferenceRequest(BaseModel):
     reference_id: str | None = None
     points: list[GroundControlPoint]
 
+
+class LegendDetectRequest(BaseModel):
+    bbox: list[int] | None = None
+
 app = FastAPI(title="VectoryAI API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
@@ -281,6 +285,30 @@ def georeferenced_raster(project_id: str) -> FileResponse:
     if not output_path.exists():
         raise HTTPException(status_code=404, detail="Georeferenced raster is not ready")
     return FileResponse(output_path, media_type="image/tiff")
+
+
+@app.post("/api/v1/projects/{project_id}/legend/detect", status_code=202)
+def start_legend_detection(project_id: str, request: LegendDetectRequest) -> dict[str, object]:
+    source_path = storage_root / project_id / "raster" / "master.jpg"
+    if not source_path.exists():
+        raise HTTPException(status_code=404, detail="Ingested master raster is not ready")
+    if request.bbox and (len(request.bbox) != 4 or request.bbox[0] < 0 or request.bbox[1] < 0 or request.bbox[2] <= request.bbox[0] or request.bbox[3] <= request.bbox[1]):
+        raise HTTPException(status_code=422, detail="bbox must be [xmin, ymin, xmax, ymax]")
+    job = celery_client.send_task(
+        "vectoryai.parse_legend",
+        args=[project_id, str(source_path), str(storage_root), request.bbox],
+    )
+    return {"project_id": project_id, "job_id": job.id, "status": "queued"}
+
+
+@app.get("/api/v1/projects/{project_id}/legend")
+def legend_registry(project_id: str) -> dict[str, object]:
+    registry_path = storage_root / project_id / "legend" / "registry.json"
+    if not registry_path.exists():
+        if (storage_root / project_id / "raster" / "master.jpg").exists():
+            return {"project_id": project_id, "status": "pending", "items": []}
+        raise HTTPException(status_code=404, detail="Project not found")
+    return json.loads(registry_path.read_text(encoding="utf-8"))
 
 
 @app.get("/api/v1/projects/{project_id}/deepzoom")
