@@ -86,3 +86,20 @@ class TopologyTests(unittest.TestCase):
             result = validate_project_topology(str(root), "project", gap_distance=0.2)
 
             self.assertIn("line_gap", {issue["kind"] for issue in result["issues"]})
+
+    def test_cleaned_line_preserves_provenance_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            layer = root / "project" / "layers"
+            layer.mkdir(parents=True)
+            collection = {"type": "FeatureCollection", "features": [
+                {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 0]]}, "properties": {"code": "A"}},
+                {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[1.1, 0], [2, 0]]}, "properties": {"code": "B"}},
+            ]}
+            (layer / "roads.geojson").write_text(json.dumps(collection), encoding="utf-8")
+
+            clean_project_topology(str(root), "project", snap_tolerance=0.2)
+            saved = json.loads((layer / "roads.geojson").read_text(encoding="utf-8"))
+
+            self.assertEqual(saved["features"][0]["properties"]["code"], "A")
+            self.assertEqual(saved["features"][0]["properties"]["merged_feature_count"], 2)

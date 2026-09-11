@@ -606,11 +606,46 @@ def clean_topology(project_id: str) -> dict[str, object]:
     asyncio.run(set_job_state(job_id, "running", "topology", 10))
     try:
         result = clean_project_topology(str(storage_root), project_id)
+        persisted_features = asyncio.run(_persist_cleaned_layers(project_id))
         asyncio.run(set_job_state(job_id, "completed", "topology", 100))
-        return {**result, "job_id": job_id}
+        return {**result, "job_id": job_id, "persisted_feature_count": persisted_features}
     except Exception as error:
         asyncio.run(set_job_state(job_id, "failed", "topology", 100, str(error)))
         raise
+
+
+async def _persist_cleaned_layers(project_id: str) -> int:
+    database_url = _database_url()
+    if not database_url:
+        return 0
+    project_directory = storage_root / project_id
+    connection = await asyncpg.connect(database_url)
+    persisted = 0
+    try:
+        await connection.execute("""
+            CREATE TABLE IF NOT EXISTS vector_features (
+                id BIGSERIAL PRIMARY KEY, project_id TEXT NOT NULL, layer_id TEXT NOT NULL,
+                geometry_type TEXT NOT NULL, geometry geometry(Geometry, 23700) NOT NULL,
+                properties JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (project_id, layer_id, geometry)
+            )
+        """)
+        for layer_path in sorted((project_directory / "layers").glob("*.geojson")):
+            collection = json.loads(layer_path.read_text(encoding="utf-8"))
+            features = collection.get("features", [])
+            await connection.execute("DELETE FROM vector_features WHERE project_id=$1 AND layer_id=$2", project_id, layer_path.stem)
+            await connection.executemany(
+                """INSERT INTO vector_features (project_id, layer_id, geometry_type, geometry, properties)
+                   VALUES ($1, $2, $3, ST_SetSRID(ST_GeomFromGeoJSON($4), 23700), $5::jsonb)""",
+                [
+                    (project_id, layer_path.stem, feature["geometry"]["type"], json.dumps(feature["geometry"]), json.dumps(feature.get("properties", {})))
+                    for feature in features
+                ],
+            )
+            persisted += len(features)
+    finally:
+        await connection.close()
+    return persisted
 
 
 @app.get("/api/v1/projects/{project_id}/deepzoom")

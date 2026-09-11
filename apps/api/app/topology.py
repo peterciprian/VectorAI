@@ -137,7 +137,10 @@ def clean_project_topology(storage_root: str, project_id: str, sliver_area: floa
             merged_lines, bridges = _bridge_lines(line_geometries, snap_tolerance)
             bridged_lines += bridges
             for line in merged_lines:
-                line_feature = {"type": "Feature", "geometry": json.loads(json.dumps(line.__geo_interface__)), "properties": line_properties[0] if line_properties else {}}
+                properties = dict(line_properties[0]) if line_properties else {}
+                properties["merged_feature_count"] = len(line_geometries) if bridges else 1
+                properties["topology_cleaned"] = True
+                line_feature = {"type": "Feature", "geometry": json.loads(json.dumps(line.__geo_interface__)), "properties": properties}
                 output_features.append(line_feature)
                 cleaned_features += 1
         collection["features"] = output_features
