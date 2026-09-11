@@ -11,10 +11,13 @@ import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import OSM from "ol/source/OSM";
 import GeoTIFF from "ol/source/GeoTIFF";
+import GeoJSON from "ol/format/GeoJSON";
 import Projection from "ol/proj/Projection";
 import { transform } from "ol/proj";
 import Style from "ol/style/Style";
 import Stroke from "ol/style/Stroke";
+import Fill from "ol/style/Fill";
+import CircleStyle from "ol/style/Circle";
 import LineString from "ol/geom/LineString";
 import Feature from "ol/Feature";
 import proj4 from "proj4";
@@ -30,6 +33,14 @@ register(proj4);
 const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const defaultLocale: Locale = "en";
 
+type DiscoveredLayer = {
+  layer_id: string;
+  code: string;
+  name: string;
+  geometry_type: string;
+  feature_count: number;
+};
+
 export default function ViewerPage() {
   const [locale, setLocale] = useState<Locale>(defaultLocale);
   const [projectId, setProjectId] = useState("");
@@ -44,11 +55,13 @@ export default function ViewerPage() {
   const [cursorCoordinate, setCursorCoordinate] = useState<
     [number, number] | null
   >(null);
+  const [discoveredLayers, setDiscoveredLayers] = useState<DiscoveredLayer[]>([]);
   const mapElement = useRef<HTMLDivElement>(null);
   const mapRef = useRef<OlMap | null>(null);
   const rasterLayerRef = useRef<WebGLTileLayer | null>(null);
   const referenceLayerRef = useRef<TileLayer<OSM> | null>(null);
   const residualLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const vectorLayerRefs = useRef<Record<string, VectorLayer<VectorSource>>>({});
   const content = getTranslations(locale);
 
   useEffect(() => {
@@ -130,6 +143,42 @@ export default function ViewerPage() {
         rasterLayerRef.current = rasterLayer;
         referenceLayerRef.current = referenceLayer;
         residualLayerRef.current = residualLayer;
+        fetch(`${apiBase}/api/v1/projects/${projectId}/layers`)
+          .then((response) => {
+            if (!response.ok) throw new Error("Layer catalog is not ready");
+            return response.json();
+          })
+          .then(async (catalog: { layers: DiscoveredLayer[] & { geojson_url?: string }[] }) => {
+            if (disposed) return;
+            const loadedLayers: DiscoveredLayer[] = [];
+            await Promise.all(
+              catalog.layers.map(async (layer) => {
+                const response = await fetch(`${apiBase}/api/v1/projects/${projectId}/layers/${layer.layer_id}/geojson`);
+                if (!response.ok) return;
+                const collection = await response.json();
+                const source = new VectorSource({
+                  features: new GeoJSON().readFeatures(collection, {
+                    dataProjection: "EPSG:23700",
+                    featureProjection: "EPSG:23700",
+                  }),
+                });
+                const vectorLayer = new VectorLayer({
+                  source,
+                  opacity: 0.9,
+                  style: layer.geometry_type === "Point"
+                    ? new Style({ image: new CircleStyle({ radius: 6, fill: new Fill({ color: "#e85d75" }), stroke: new Stroke({ color: "#fff", width: 2 }) }) })
+                    : layer.geometry_type === "LineString"
+                      ? new Style({ stroke: new Stroke({ color: "#e85d75", width: 2 }) })
+                      : new Style({ fill: new Fill({ color: "rgba(232, 93, 117, 0.22)" }), stroke: new Stroke({ color: "#e85d75", width: 1 }) }),
+                });
+                map.addLayer(vectorLayer);
+                vectorLayerRefs.current[layer.layer_id] = vectorLayer;
+                loadedLayers.push(layer);
+              }),
+            );
+            setDiscoveredLayers(loadedLayers);
+          })
+          .catch(() => setDiscoveredLayers([]));
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
@@ -137,8 +186,18 @@ export default function ViewerPage() {
       disposed = true;
       mapRef.current?.setTarget(undefined);
       mapRef.current = null;
+      vectorLayerRefs.current = {};
+      setDiscoveredLayers([]);
     };
   }, [projectId]);
+
+  function updateDiscoveredLayer(layerId: string, visible: boolean) {
+    vectorLayerRefs.current[layerId]?.setVisible(visible);
+  }
+
+  function updateDiscoveredOpacity(layerId: string, opacity: number) {
+    vectorLayerRefs.current[layerId]?.setOpacity(opacity);
+  }
 
   function updateLayer(
     layer: "raster" | "reference" | "residual",
@@ -270,6 +329,27 @@ export default function ViewerPage() {
               />{" "}
               {content.viewer.residuals}
             </label>
+            {discoveredLayers.map((layer) => (
+              <div className="viewer-discovered-layer" key={layer.layer_id}>
+                <label>
+                  <input
+                    type="checkbox"
+                    defaultChecked
+                    onChange={(event) => updateDiscoveredLayer(layer.layer_id, event.target.checked)}
+                  />{" "}
+                  {layer.code || layer.name || layer.layer_id} ({layer.geometry_type})
+                </label>
+                <input
+                  aria-label={`${layer.code || layer.name} opacity`}
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  defaultValue="0.9"
+                  onChange={(event) => updateDiscoveredOpacity(layer.layer_id, Number(event.target.value))}
+                />
+              </div>
+            ))}
             <div className="viewer-coordinate">
               <span>{content.viewer.cursor}</span>
               <strong>

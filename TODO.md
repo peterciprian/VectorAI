@@ -30,8 +30,8 @@ This file records known gaps and limitations identified while implementing PBIs.
 
 ## PBI-04: OpenLayers Viewer
 
-- [ ] Add automatic discovery and rendering of generated legend-class vector layers.
-- [ ] Add a real layer catalog with names, class codes, geometry types, visibility, and opacity.
+- [x] Add automatic discovery and rendering of generated legend-class vector layers.
+- [x] Add a real layer catalog with names, class codes, geometry types, visibility, and opacity.
 - [ ] Add raster/vector layer ordering and independent opacity persistence.
 - [ ] Add project-aware viewer loading states and API error recovery.
 - [ ] Add browser tests for EOV cursor coordinates, layer toggles, opacity, and COG rendering.
@@ -79,11 +79,14 @@ This file records known gaps and limitations identified while implementing PBIs.
 - [x] Implement initial graph-based endpoint/junction tracing, short-spur pruning, and path chaining.
 - [x] Complete and validate the branched-line graph fixture test in the rebuilt NetworkX worker image.
 - [x] Implement color-mask connected-component point-symbol detection and centroid extraction.
+- [x] Add project-relative template matching for symbols that are not isolated reliably by color.
+- [x] Persist generated Point features in PostGIS with EPSG:23700 geometry and symbol metadata.
 - [x] Enforce the initial strict LineString output contract.
 - [x] Add an initial LineString fixture and output test.
 - [x] Add an initial Point fixture with strict geometry and symbol metadata assertions.
 - [ ] Add real municipal line fixtures and geometry-specific accuracy tests.
-- [ ] Add real municipal point-symbol fixtures, template/model detection, and accuracy tests.
+- [ ] Add real municipal point-symbol fixtures and accuracy tests for color/template detection.
+- [ ] Evaluate YOLO-based symbol detection for crowded or visually ambiguous point classes.
 
 ## PBI-10/PBI-11/PBI-15: Export, Layers, Editing
 

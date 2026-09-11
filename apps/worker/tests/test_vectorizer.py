@@ -97,6 +97,37 @@ class VectorizerTests(unittest.TestCase):
             self.assertTrue(all(feature["properties"]["symbol_type"] == "protected_tree" for feature in collection["features"]))
             self.assertTrue(all(feature["properties"]["label"] == "Vedett fa" for feature in collection["features"]))
 
+    def test_point_class_uses_project_relative_template_matches(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            project = root / "project"
+            raster = project / "raster"
+            templates = project / "templates"
+            raster.mkdir(parents=True)
+            templates.mkdir()
+            image = Image.new("RGB", (100, 100), "white")
+            draw = ImageDraw.Draw(image)
+            draw.rectangle((12, 18, 20, 26), fill=(20, 20, 20))
+            draw.rectangle((68, 58, 76, 66), fill=(20, 20, 20))
+            image.save(raster / "master.jpg")
+            image.crop((12, 18, 21, 27)).save(templates / "symbol.png")
+            item = {
+                "id": "leg_template_point",
+                "code": "MU",
+                "name": "Muemlek",
+                "geometry_type": "Point",
+                "color_rgb": [220, 20, 20],
+                "color_tolerance": 4,
+                "template_path": "templates/symbol.png",
+                "template_threshold": 0.5,
+            }
+
+            result = vectorize_point_class("project", str(root), item)
+            collection = json.loads((project / "layers" / "leg_template_point.geojson").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["feature_count"], 2)
+            self.assertTrue(all(feature["properties"]["detection_method"] == "template_match" for feature in collection["features"]))
+
 
 if __name__ == "__main__":
     unittest.main()

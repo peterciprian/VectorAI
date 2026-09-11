@@ -1,5 +1,6 @@
 import os
 import asyncio
+import json
 import asyncpg
 
 from celery import Celery
@@ -109,4 +110,46 @@ def vectorize_line_task(project_id: str, legend_item: dict[str, object], storage
 
 @celery_app.task(name="vectoryai.vectorize_point")
 def vectorize_point_task(project_id: str, legend_item: dict[str, object], storage_root: str) -> dict[str, object]:
-    return vectorize_point_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
+    result = vectorize_point_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        asyncio.run(_persist_point_features(project_id, result, storage_root))
+    return result
+
+
+async def _persist_point_features(project_id: str, result: dict[str, object], storage_root: str) -> None:
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        return
+    connection = await asyncpg.connect(database_url.replace("postgresql+asyncpg://", "postgresql://"))
+    try:
+        await connection.execute("""
+            CREATE TABLE IF NOT EXISTS point_features (
+                id BIGSERIAL PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                layer_id TEXT NOT NULL,
+                geometry geometry(Point, 23700) NOT NULL,
+                properties JSONB NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (project_id, layer_id, geometry)
+            )
+        """)
+        layer_path = os.path.join(storage_root, project_id, "layers", f"{result['layer_id']}.geojson")
+        collection = json.loads(open(layer_path, encoding="utf-8").read())
+        await connection.execute(
+            "DELETE FROM point_features WHERE project_id = $1 AND layer_id = $2",
+            project_id,
+            result["layer_id"],
+        )
+        await connection.executemany(
+            """INSERT INTO point_features (project_id, layer_id, geometry, properties)
+               VALUES ($1, $2, ST_SetSRID(ST_GeomFromGeoJSON($3), 23700), $4::jsonb)
+               ON CONFLICT (project_id, layer_id, geometry) DO UPDATE SET properties = EXCLUDED.properties""",
+            [
+                (project_id, result["layer_id"], json.dumps(feature["geometry"]), json.dumps(feature.get("properties", {})))
+                for feature in collection.get("features", [])
+            ],
+        )
+        result["persisted_feature_count"] = len(collection.get("features", []))
+    finally:
+        await connection.close()

@@ -52,6 +52,8 @@ class LegendItem(BaseModel):
     name: str
     symbol_type: str | None = None
     label: str | None = None
+    template_path: str | None = None
+    template_threshold: float = Field(ge=0, le=1, default=0.75)
     geometry_type: str
     color_rgb: list[int] = Field(min_length=3, max_length=3)
     color_tolerance: int = Field(ge=0, le=100)
@@ -413,6 +415,33 @@ def vector_layer_geojson(project_id: str, layer_id: str) -> FileResponse:
     if not layer_path.exists():
         raise HTTPException(status_code=404, detail="Vector layer is not ready")
     return FileResponse(layer_path, media_type="application/geo+json")
+
+
+@app.get("/api/v1/projects/{project_id}/layers")
+def vector_layer_catalog(project_id: str) -> dict[str, object]:
+    project_directory = storage_root / project_id
+    registry_path = project_directory / "legend" / "registry.json"
+    if not project_directory.exists():
+        raise HTTPException(status_code=404, detail="Project not found")
+    registry = json.loads(registry_path.read_text(encoding="utf-8")) if registry_path.exists() else {"items": []}
+    layers: list[dict[str, object]] = []
+    for item in registry.get("items", []):
+        layer_id = str(item.get("id", ""))
+        if not layer_id:
+            continue
+        layer_path = project_directory / "layers" / f"{Path(layer_id).name}.geojson"
+        if not layer_path.exists():
+            continue
+        collection = json.loads(layer_path.read_text(encoding="utf-8"))
+        layers.append({
+            "layer_id": layer_id,
+            "code": item.get("code", ""),
+            "name": item.get("name", ""),
+            "geometry_type": item.get("geometry_type", ""),
+            "feature_count": len(collection.get("features", [])),
+            "geojson_url": f"/api/v1/projects/{project_id}/layers/{layer_id}/geojson",
+        })
+    return {"project_id": project_id, "layers": layers}
 
 
 @app.get("/api/v1/projects/{project_id}/deepzoom")
