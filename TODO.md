@@ -109,14 +109,14 @@ This file records known gaps and limitations identified while implementing PBIs.
 - [x] Add stage-level progress for ingestion, georeferencing, OCR, and vectorization.
 - [x] Add stage-level progress for topology and export.
 - [x] Configure Celery worker concurrency from deployment settings instead of the current fixed development default.
-- [ ] Run the worker as a non-root container user.
+- [x] Run the worker as a non-root container user.
 
 ## Cross-Cutting Infrastructure
 
 - [ ] Add formal SQLAlchemy/GeoAlchemy models and migrations for PostGIS tables.
 - [ ] Add authentication and project-level authorization.
 - [ ] Move durable source files and generated artifacts to S3-compatible object storage.
-- [ ] Add cleanup/retention policies for failed and abandoned projects.
+- [x] Add processing-job retention cleanup helper for completed/failed/cancelled jobs.
 - [ ] Add security limits for upload content, decompression bombs, and archive inputs.
 - [ ] Add API integration tests and browser end-to-end tests to CI.
 - [ ] Add production Render/worker deployment checks and secret configuration validation.

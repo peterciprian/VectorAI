@@ -435,7 +435,7 @@ async def cancel_processing_job(job_id: str) -> dict[str, object]:
     if job["status"] in {"completed", "failed", "cancelled"}:
         raise HTTPException(status_code=409, detail="Job is no longer cancellable")
     celery_client.control.revoke(job_id, terminate=False)
-    updated = await set_job_state(job_id, "cancelled", "cancelled", float(job.get("progress_percent") or 0), "Cancelled by user")
+    updated = await set_job_state(job_id, "cancelled", "cancelled", float(job.get("progress_percent") or 0), "Cancelled by user", "cancel")
     return serializable_job(updated or {"id": job_id, "status": "cancelled"})
 
 
@@ -450,7 +450,14 @@ async def retry_processing_job(job_id: str) -> dict[str, object]:
     task_args = job.get("task_args") or []
     if not task_name:
         raise HTTPException(status_code=422, detail="Job does not contain retry information")
-    await set_job_state(job_id, "queued", "queued", 0)
+    await set_job_state(job_id, "queued", "queued", 0, action="retry")
+    url = _database_url()
+    if url:
+        connection = await asyncpg.connect(url)
+        try:
+            await connection.execute("UPDATE processing_jobs SET retry_count=retry_count+1 WHERE id=$1", job_id)
+        finally:
+            await connection.close()
     celery_client.send_task(task_name, args=[*task_args, job_id], task_id=job_id)
     updated = await get_job(job_id)
     return serializable_job(updated or {"id": job_id, "status": "queued"})

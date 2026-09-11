@@ -8,4 +8,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY tests ./tests
+RUN useradd --create-home --uid 10001 vectory && chown -R vectory:vectory /app
+USER vectory
 CMD ["sh", "-c", "celery -A app.celery_app.celery_app worker --loglevel=INFO --concurrency=${CELERY_CONCURRENCY:-2}"]

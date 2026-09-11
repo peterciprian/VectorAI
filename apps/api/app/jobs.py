@@ -22,6 +22,8 @@ async def ensure_jobs_table(connection: asyncpg.Connection) -> None:
             job_type TEXT NOT NULL,
             task_name TEXT,
             task_args JSONB,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            last_action TEXT,
             status TEXT NOT NULL,
             stage TEXT NOT NULL,
             progress_percent DOUBLE PRECISION NOT NULL DEFAULT 0,
@@ -33,6 +35,8 @@ async def ensure_jobs_table(connection: asyncpg.Connection) -> None:
     """)
     await connection.execute("ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS task_name TEXT")
     await connection.execute("ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS task_args JSONB")
+    await connection.execute("ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0")
+    await connection.execute("ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS last_action TEXT")
 
 
 async def create_job(project_id: str, job_id: str, job_type: str, task_name: str, task_args: list[object]) -> None:
@@ -59,13 +63,13 @@ async def get_job(job_id: str) -> dict[str, Any] | None:
     connection = await asyncpg.connect(url)
     try:
         await ensure_jobs_table(connection)
-        row = await connection.fetchrow("SELECT id, project_id, job_type, task_name, task_args, status, stage, progress_percent, error_details, created_at, started_at, finished_at FROM processing_jobs WHERE id = $1", job_id)
+        row = await connection.fetchrow("SELECT id, project_id, job_type, task_name, task_args, retry_count, last_action, status, stage, progress_percent, error_details, created_at, started_at, finished_at FROM processing_jobs WHERE id = $1", job_id)
         return dict(row) if row else None
     finally:
         await connection.close()
 
 
-async def set_job_state(job_id: str, status: str, stage: str, progress: float, error: str | None = None) -> dict[str, Any] | None:
+async def set_job_state(job_id: str, status: str, stage: str, progress: float, error: str | None = None, action: str | None = None) -> dict[str, Any] | None:
     url = database_url()
     if not url:
         return None
@@ -73,11 +77,13 @@ async def set_job_state(job_id: str, status: str, stage: str, progress: float, e
     try:
         await ensure_jobs_table(connection)
         await connection.execute(
-            """UPDATE processing_jobs SET status=$2, stage=$3, progress_percent=$4, error_details=$5::jsonb,
-               finished_at=CASE WHEN $2 IN ('cancelled','failed') THEN NOW() ELSE finished_at END WHERE id=$1""",
-            job_id, status, stage, progress, json.dumps({"message": error}) if error else None,
+                """UPDATE processing_jobs SET status=$2, stage=$3, progress_percent=$4, error_details=$5::jsonb,
+                    last_action=COALESCE($6, last_action),
+                    finished_at=CASE WHEN $2 IN ('cancelled','failed') THEN NOW() ELSE finished_at END
+                    WHERE id=$1 AND NOT ($2 IN ('running','completed') AND status='cancelled')""",
+                job_id, status, stage, progress, json.dumps({"message": error}) if error else None, action,
         )
-        row = await connection.fetchrow("SELECT id, project_id, job_type, task_name, task_args, status, stage, progress_percent, error_details, created_at, started_at, finished_at FROM processing_jobs WHERE id=$1", job_id)
+        row = await connection.fetchrow("SELECT id, project_id, job_type, task_name, task_args, retry_count, last_action, status, stage, progress_percent, error_details, created_at, started_at, finished_at FROM processing_jobs WHERE id=$1", job_id)
         result = dict(row) if row else None
     finally:
         await connection.close()
@@ -86,8 +92,24 @@ async def set_job_state(job_id: str, status: str, stage: str, progress: float, e
         try:
             await client.publish(f"vectoryai:project:{result['project_id']}:jobs", json.dumps({"job_id": job_id, "project_id": result["project_id"], "status": status, "stage": stage, "progress_percent": progress, "error": error}))
         finally:
-            await client.close()
+            await client.aclose()
     return result
+
+
+async def cleanup_jobs(retention_days: int = 30) -> int:
+    url = database_url()
+    if not url:
+        return 0
+    connection = await asyncpg.connect(url)
+    try:
+        await ensure_jobs_table(connection)
+        result = await connection.execute(
+            "DELETE FROM processing_jobs WHERE status IN ('completed','failed','cancelled') AND finished_at < NOW() - ($1 * INTERVAL '1 day')",
+            retention_days,
+        )
+        return int(result.split()[-1])
+    finally:
+        await connection.close()
 
 
 def serializable_job(job: dict[str, Any]) -> dict[str, Any]:
@@ -111,5 +133,5 @@ async def project_events(project_id: str):
                 yield ": keepalive\n\n"
     finally:
         await pubsub.unsubscribe()
-        await pubsub.close()
-        await client.close()
+        await pubsub.aclose()
+        await client.aclose()
