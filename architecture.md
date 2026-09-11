@@ -260,6 +260,8 @@ flowchart TD
 
 ### 3.5. Module 5: Multi-Layer Vectorization Engine (`apps.vectorizer`)
 
+The initial implemented vectorizer slice is exposed by `POST /api/v1/projects/{id}/vectorize` and asynchronously runs a reviewed Polygon legend class through Lab-distance color masking, morphological cleanup, raster polygonization, validity repair, and simplification. It writes a strict Polygon GeoJSON layer under the project storage and serves it through `GET /api/v1/projects/{id}/layers/{layer_id}/geojson`.
+
 ```mermaid
 flowchart TD
     A[Clean Raster Image] --> B{Geometry Target}

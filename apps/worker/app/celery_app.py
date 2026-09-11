@@ -7,6 +7,7 @@ from celery import Celery
 from .ingestion import ingest_document
 from .georef import georeference_raster, write_georef_metadata
 from .legend import parse_legend
+from .vectorizer import polygonize_class
 
 
 async def _persist_legend_registry(project_id: str, registry: dict[str, object]) -> None:
@@ -92,3 +93,8 @@ def parse_legend_task(project_id: str, source_path: str, storage_root: str, bbox
     registry = parse_legend(project_id=project_id, source_path=source_path, storage_root=storage_root, bbox=bbox)
     asyncio.run(_persist_legend_registry(project_id, registry))
     return registry
+
+
+@celery_app.task(name="vectoryai.vectorize_polygon")
+def vectorize_polygon_task(project_id: str, legend_item: dict[str, object], storage_root: str) -> dict[str, object]:
+    return polygonize_class(project_id=project_id, storage_root=storage_root, legend_item=legend_item)

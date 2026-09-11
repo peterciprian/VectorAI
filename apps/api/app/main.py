@@ -60,6 +60,10 @@ class LegendUpdateRequest(BaseModel):
     items: list[LegendItem]
 
 
+class PolygonVectorizeRequest(BaseModel):
+    legend_item: LegendItem
+
+
 async def _persist_legend_items(project_id: str, items: list[LegendItem]) -> None:
     database_url = _database_url()
     if not database_url:
@@ -378,6 +382,29 @@ def update_legend(project_id: str, request: LegendUpdateRequest) -> dict[str, ob
     except Exception as error:
         raise HTTPException(status_code=503, detail="Legend database persistence is unavailable") from error
     return {"updated_count": len(request.items), "status": "reviewed"}
+
+
+@app.post("/api/v1/projects/{project_id}/vectorize", status_code=202)
+def start_polygon_vectorization(project_id: str, request: PolygonVectorizeRequest) -> dict[str, object]:
+    if request.legend_item.geometry_type != "Polygon":
+        raise HTTPException(status_code=422, detail="The initial vectorizer slice only accepts Polygon legend items")
+    raster_path = storage_root / project_id / "raster" / "master.jpg"
+    if not raster_path.exists():
+        raise HTTPException(status_code=404, detail="Ingested master raster is not ready")
+    job = celery_client.send_task(
+        "vectoryai.vectorize_polygon",
+        args=[project_id, request.legend_item.model_dump(), str(storage_root)],
+    )
+    return {"project_id": project_id, "job_id": job.id, "status": "queued", "layer_id": request.legend_item.id}
+
+
+@app.get("/api/v1/projects/{project_id}/layers/{layer_id}/geojson")
+def vector_layer_geojson(project_id: str, layer_id: str) -> FileResponse:
+    safe_layer_id = Path(layer_id).name
+    layer_path = storage_root / project_id / "layers" / f"{safe_layer_id}.geojson"
+    if not layer_path.exists():
+        raise HTTPException(status_code=404, detail="Vector layer is not ready")
+    return FileResponse(layer_path, media_type="application/geo+json")
 
 
 @app.get("/api/v1/projects/{project_id}/deepzoom")
