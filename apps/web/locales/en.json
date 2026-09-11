@@ -49,5 +49,25 @@
     "titleEmphasis": "ready for GIS.",
     "description": "Digitize zoning districts, regulatory lines, and point symbols in one traceable workflow. Native EOV support included.",
     "cta": "Talk to the team"
+  },
+  "upload": {
+    "back": "Back to home",
+    "label": "Start with a plan",
+    "titleBefore": "Put the plan",
+    "titleEmphasis": "to work.",
+    "description": "Upload a PDF or high-resolution image to create a new ingestion job.",
+    "chooseFile": "Choose a plan",
+    "noFile": "No file selected",
+    "page": "PDF page",
+    "pageHint": "Use 1 for the first page",
+    "submit": "Upload and process",
+    "uploading": "Uploading",
+    "queued": "Queued for processing",
+    "completed": "Ingestion complete",
+    "error": "Upload failed. Check the file and try again.",
+    "job": "Job",
+    "project": "Project",
+    "apiUnavailable": "The local API is unavailable. Start the Docker services and try again.",
+    "acceptedFormats": "PDF, JPG, PNG, TIFF up to 200 MB"
   }
 }

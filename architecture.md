@@ -167,7 +167,7 @@ classDiagram
 
 ---
 
-### 3.1. Module 1: Ingestion & Tile Pyramid Engine (`apps.ingestion`)
+### 3.1. Module 1: Ingestion & Tile Pyramid Engine (`apps/worker/app/ingestion.py`)
 Large format maps (e.g., A0 @ 300 DPI = $14,030 \times 9,920$ pixels $\approx 417$ MB raw RGB) cannot be sent directly to the browser or processed in a single GPU pass without Out-Of-Memory (OOM) errors.
 
 ```mermaid
@@ -185,7 +185,7 @@ flowchart TD
 
 - **PDF Rasterization:** Uses `PyMuPDF` (`fitz`) and `pdftoppm` rendering engine with anti-aliasing and subpixel rendering.
 - **Tiling & Pyramid Generation:** Generates DeepZoom (`.dzi`) / Zoomify pyramid tiles (`libvips`) for instant, lag-free pan/zoom in OpenLayers.
-- **Processing Slices:** Generates $1024 \times 1024$ pixel sliding window tiles with a 128 px overlap. The overlap eliminates boundary artifacts during subsequent edge detection and polygon tracing.
+- **Processing Slices:** Generates $512 \times 512$ pixel sliding window tiles with a 64 px overlap. The overlap eliminates boundary artifacts during subsequent edge detection and polygon tracing.
 
 ---
 

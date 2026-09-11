@@ -49,5 +49,25 @@
     "titleEmphasis": "GIS-készre.",
     "description": "Digitalizálja az övezeteket, szabályozási vonalakat és pontszerű elemeket egyetlen, nyomon követhető munkafolyamatban. Natív EOV-támogatással.",
     "cta": "Lépjen kapcsolatba velünk"
+  },
+  "upload": {
+    "back": "Vissza a kezdőlapra",
+    "label": "Kezdje egy tervvel",
+    "titleBefore": "Adjon új életet",
+    "titleEmphasis": "a tervlapnak.",
+    "description": "Töltsön fel PDF-et vagy nagy felbontású képet egy új feldolgozási feladat létrehozásához.",
+    "chooseFile": "Terv kiválasztása",
+    "noFile": "Nincs kiválasztott fájl",
+    "page": "PDF-oldal",
+    "pageHint": "Az első oldalhoz használja az 1-es értéket",
+    "submit": "Feltöltés és feldolgozás",
+    "uploading": "Feltöltés",
+    "queued": "Feldolgozásra vár",
+    "completed": "Feldolgozás kész",
+    "error": "A feltöltés sikertelen. Ellenőrizze a fájlt, majd próbálja újra.",
+    "job": "Feladat",
+    "project": "Projekt",
+    "apiUnavailable": "A helyi API nem érhető el. Indítsa el a Docker szolgáltatásokat, majd próbálja újra.",
+    "acceptedFormats": "PDF, JPG, PNG, TIFF, legfeljebb 200 MB"
   }
 }

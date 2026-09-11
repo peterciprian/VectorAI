@@ -432,6 +432,139 @@ em {
   line-height: 1.8;
   margin: 0 0 2rem;
 }
+.upload-panel {
+  max-width: 390px;
+  width: 100%;
+}
+.upload-label {
+  color: var(--acid) !important;
+  font-size: 0.68rem !important;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.65rem !important;
+  text-transform: uppercase;
+}
+.file-picker {
+  align-items: center;
+  border: 1px solid rgba(242, 240, 232, 0.28);
+  color: var(--paper);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.68rem;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-height: 3.25rem;
+  padding: 0.65rem 0.8rem;
+}
+.file-picker span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-picker-action {
+  color: var(--acid);
+  flex: 0 0 auto;
+  text-transform: uppercase;
+}
+.file-picker input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+.upload-options {
+  align-items: center;
+  display: flex;
+  font-size: 0.65rem;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+.upload-options input {
+  background: transparent;
+  border: 1px solid rgba(242, 240, 232, 0.28);
+  color: var(--paper);
+  font: 0.7rem var(--mono);
+  padding: 0.45rem;
+  width: 4.5rem;
+}
+.upload-options input:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.upload-hint {
+  color: #829087 !important;
+  font-size: 0.62rem !important;
+  margin: 0.7rem 0 1rem !important;
+}
+.upload-submit {
+  border: 0;
+  cursor: pointer;
+  width: 100%;
+}
+.upload-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.upload-progress {
+  accent-color: var(--acid);
+  display: block;
+  height: 0.3rem;
+  margin-top: 1rem;
+  width: 100%;
+}
+.upload-success,
+.upload-error {
+  font-size: 0.62rem !important;
+  line-height: 1.5 !important;
+  margin: 1rem 0 0 !important;
+  overflow-wrap: anywhere;
+}
+.upload-success { color: var(--acid) !important; }
+.upload-error { color: #ffad9a !important; }
+.upload-contact {
+  border-bottom: 1px solid rgba(242, 240, 232, 0.45);
+  display: inline-block;
+  font-size: 0.65rem;
+  margin-top: 1.5rem;
+  padding-bottom: 0.2rem;
+}
+.upload-page {
+  min-height: 100vh;
+}
+.back-link {
+  color: #58675d;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+.upload-shell {
+  align-items: center;
+  display: grid;
+  gap: 5rem;
+  grid-template-columns: 1fr 0.8fr;
+  min-height: 700px;
+  padding-bottom: 6rem;
+  padding-top: 5rem;
+}
+.upload-intro h1 {
+  font-size: clamp(3.5rem, 6vw, 6rem);
+}
+.upload-card {
+  background: var(--night);
+  color: var(--paper);
+  padding: 2rem;
+}
+.upload-card .file-picker {
+  border-color: rgba(242, 240, 232, 0.38);
+}
+.upload-card .upload-hint {
+  margin-bottom: 1.5rem !important;
+}
+.upload-card .upload-options {
+  margin-top: 1.5rem;
+}
+.upload-card .upload-submit {
+  font-size: 0.68rem;
+}
 @media (max-width: 850px) {
   .hero {
     gap: 3rem;
@@ -468,6 +601,16 @@ em {
   }
   .workflow-card:nth-child(3) {
     padding-left: 0;
+  }
+  .upload-shell {
+    gap: 3rem;
+    grid-template-columns: 1fr;
+    min-height: auto;
+    padding-bottom: 5rem;
+    padding-top: 4rem;
+  }
+  .upload-intro {
+    max-width: 650px;
   }
 }
 @media (max-width: 600px) {
@@ -540,5 +683,8 @@ em {
     min-height: 500px;
     padding-bottom: 2.5rem;
     padding-top: 2.5rem;
+  }
+  .upload-panel {
+    max-width: 100%;
   }
 }

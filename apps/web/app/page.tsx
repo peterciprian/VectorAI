@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { getTranslations, type Locale } from '../lib/i18n';
 
 const defaultLocale: Locale = 'en';
@@ -26,7 +27,7 @@ export default function Home() {
         <div className="nav-links">
           <a href="#workflow">{content.navigation.workflow}</a>
           <a href="#outcomes">{content.navigation.why}</a>
-          <a className="nav-cta" href="#start">{content.navigation.start} <span aria-hidden="true">&#8599;</span></a>
+          <Link className="nav-cta" href="/upload">{content.navigation.start} <span aria-hidden="true">&#8599;</span></Link>
           <label className="language-picker">
             <span className="sr-only">{content.language.label}</span>
             <select value={locale} onChange={(event) => handleLocaleChange(event.target.value as Locale)} aria-label={content.language.label}>
