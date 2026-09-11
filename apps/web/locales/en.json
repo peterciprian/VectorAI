@@ -116,5 +116,29 @@
     "referenceOpacity": "Reference opacity",
     "rasterOpacity": "Raster opacity",
     "cursor": "EOV cursor coordinates"
+  },
+  "legend": {
+    "back": "Back to map",
+    "eyebrow": "Legend review",
+    "titleBefore": "Make the legend",
+    "titleEmphasis": "machine-ready.",
+    "description": "Review detected classes before vectorization. Adjust geometry, color tolerance, and processing state.",
+    "detect": "Run legend detection",
+    "save": "Save legend",
+    "saving": "Saving",
+    "saved": "Legend saved",
+    "pending": "No legend registry has been generated yet.",
+    "code": "Code",
+    "name": "Class name",
+    "geometry": "Geometry",
+    "tolerance": "Tolerance",
+    "enabled": "Enabled",
+    "add": "Add class",
+    "remove": "Remove",
+    "polygon": "Polygon",
+    "line": "LineString",
+    "point": "Point",
+    "error": "Legend update failed. Try again.",
+    "manualReview": "Manual crop review recommended"
   }
 }

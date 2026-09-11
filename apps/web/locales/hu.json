@@ -116,5 +116,29 @@
     "referenceOpacity": "Referencia átlátszósága",
     "rasterOpacity": "Raszter átlátszósága",
     "cursor": "EOV kurzorkoordináták"
+  },
+  "legend": {
+    "back": "Vissza a térképhez",
+    "eyebrow": "Jelmagyarázat ellenőrzése",
+    "titleBefore": "Tegye a jelmagyarázatot",
+    "titleEmphasis": "feldolgozásra készre.",
+    "description": "Ellenőrizze a felismert osztályokat a vektorizálás előtt. Módosítsa a geometriát, a színtoleranciát és a feldolgozási állapotot.",
+    "detect": "Jelmagyarázat felismerése",
+    "save": "Jelmagyarázat mentése",
+    "saving": "Mentés",
+    "saved": "Jelmagyarázat mentve",
+    "pending": "Még nem készült jelmagyarázat-regiszter.",
+    "code": "Kód",
+    "name": "Osztály neve",
+    "geometry": "Geometria",
+    "tolerance": "Tolerancia",
+    "enabled": "Engedélyezve",
+    "add": "Osztály hozzáadása",
+    "remove": "Eltávolítás",
+    "polygon": "Polygon",
+    "line": "LineString",
+    "point": "Point",
+    "error": "A jelmagyarázat mentése sikertelen. Próbálja újra.",
+    "manualReview": "Kézi kivágás-ellenőrzés javasolt"
   }
 }

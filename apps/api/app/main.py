@@ -44,6 +44,20 @@ class GeoreferenceRequest(BaseModel):
 class LegendDetectRequest(BaseModel):
     bbox: list[int] | None = None
 
+
+class LegendItem(BaseModel):
+    id: str
+    code: str
+    name: str
+    geometry_type: str
+    color_rgb: list[int] = Field(min_length=3, max_length=3)
+    color_tolerance: int = Field(ge=0, le=100)
+    enabled: bool = True
+
+
+class LegendUpdateRequest(BaseModel):
+    items: list[LegendItem]
+
 app = FastAPI(title="VectoryAI API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
@@ -309,6 +323,22 @@ def legend_registry(project_id: str) -> dict[str, object]:
             return {"project_id": project_id, "status": "pending", "items": []}
         raise HTTPException(status_code=404, detail="Project not found")
     return json.loads(registry_path.read_text(encoding="utf-8"))
+
+
+@app.put("/api/v1/projects/{project_id}/legend")
+def update_legend(project_id: str, request: LegendUpdateRequest) -> dict[str, object]:
+    project_directory = storage_root / project_id
+    registry_path = project_directory / "legend" / "registry.json"
+    if not registry_path.exists():
+        raise HTTPException(status_code=404, detail="Legend registry not found")
+    for item in request.items:
+        if item.geometry_type not in {"Polygon", "LineString", "Point"}:
+            raise HTTPException(status_code=422, detail="geometry_type must be Polygon, LineString, or Point")
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    registry["items"] = [item.model_dump() for item in request.items]
+    registry["status"] = "reviewed"
+    registry_path.write_text(json.dumps(registry, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"updated_count": len(request.items), "status": "reviewed"}
 
 
 @app.get("/api/v1/projects/{project_id}/deepzoom")

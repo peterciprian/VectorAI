@@ -775,6 +775,18 @@ em {
   color: var(--acid);
   font: 1rem var(--mono);
 }
+.legend-page { min-height: 100vh; }
+.legend-shell { padding-bottom: 5rem; padding-top: 4rem; }
+.legend-heading { max-width: 760px; }
+.legend-heading h1 { font-size: clamp(3rem, 5.5vw, 5.8rem); }
+.legend-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 1.2rem; margin: 2.5rem 0 1.5rem; }
+.legend-table { border-top: 1px solid var(--line); overflow-x: auto; }
+.legend-row { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: 0.7rem; grid-template-columns: 8rem minmax(14rem, 1fr) 9rem 9rem 5rem 5rem; min-width: 650px; padding: 0.7rem 0; }
+.legend-header { color: var(--muted); font-size: 0.62rem; text-transform: uppercase; }
+.legend-row input[type="text"], .legend-row input:not([type]), .legend-row select { background: transparent; border: 1px solid var(--line); color: var(--ink); font: 0.7rem var(--mono); min-width: 0; padding: 0.55rem; }
+.legend-row input[type="range"] { accent-color: var(--coral); width: 100%; }
+.legend-row input[type="checkbox"] { accent-color: var(--coral); justify-self: center; }
+.legend-row button { background: transparent; border: 0; color: var(--coral); cursor: pointer; font: 0.62rem var(--mono); text-transform: uppercase; }
 .residual-list {
   display: flex;
   flex-wrap: wrap;
